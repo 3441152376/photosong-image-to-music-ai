@@ -1,0 +1,81 @@
+{
+  "points": {
+    "create_music": 100,
+    "packages": [
+      {
+        "name": "小额储值",
+        "points": 800,
+        "price": 2,
+        "description": "体验创作乐趣"
+      },
+      {
+        "name": "超值套餐",
+        "points": 2400,
+        "price": 5,
+        "description": "灵感无限释放"
+      },
+      {
+        "name": "豪华套餐",
+        "points": 6000,
+        "price": 12,
+        "description": "创作无限可能"
+      }
+    ]
+  },
+  "memberships": [
+    {
+      "name": "体验会员",
+      "price": 5,
+      "period": "month",
+      "points": 2000,
+      "features": [
+        "monthlyPoints",
+        "unlimitedCreation",
+        "commercialLicense",
+        "priorityQueue"
+      ]
+    },
+    {
+      "name": "进阶会员",
+      "price": 15,
+      "period": "month",
+      "points": 6000,
+      "features": [
+        "monthlyPoints",
+        "unlimitedCreation",
+        "commercialLicense",
+        "priorityQueue",
+        "support"
+      ]
+    },
+    {
+      "name": "专业会员",
+      "price": 99,
+      "period": "year",
+      "points": 40000,
+      "features": [
+        "yearlyPoints",
+        "unlimitedCreation",
+        "commercialLicense",
+        "highestPriority",
+        "support",
+        "customService"
+      ]
+    },
+    {
+      "name": "永久会员",
+      "price": 400,
+      "period": "lifetime",
+      "points": 160000,
+      "features": [
+        "lifetimePoints",
+        "unlimitedCreation",
+        "commercialLicense",
+        "highestPriority",
+        "support",
+        "customService",
+        "lifetime"
+      ]
+    }
+  ]
+} 
