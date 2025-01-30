@@ -164,6 +164,19 @@ const checkTaskStatus = async (taskId, workId) => {
   }
 }
 
+// 添加重试函数
+const retryWithDelay = async (fn, retries = 3, delay = 1000) => {
+  try {
+    return await fn()
+  } catch (error) {
+    if (retries > 0 && error.code === 429) {
+      await new Promise(resolve => setTimeout(resolve, delay))
+      return retryWithDelay(fn, retries - 1, delay * 2)
+    }
+    throw error
+  }
+}
+
 // 获取用户作品
 const fetchWorks = async () => {
   try {
@@ -173,7 +186,30 @@ const fetchWorks = async () => {
     query.descending('createdAt')
     query.limit(1000)
     
-    const results = await query.find()
+    const results = await retryWithDelay(() => query.find())
+    
+    // 只在作品没有 ACL 时设置
+    const worksToUpdate = results.filter(work => !work.getACL())
+    
+    // 分批处理 ACL 更新，每批 10 个
+    for (let i = 0; i < worksToUpdate.length; i += 10) {
+      const batch = worksToUpdate.slice(i, i + 10)
+      const updatePromises = batch.map(async (work) => {
+        const acl = new AV.ACL()
+        acl.setPublicReadAccess(true)
+        acl.setWriteAccess(work.get('user'), true)
+        work.setACL(acl)
+        return retryWithDelay(() => work.save(null, { fetchWhenSave: true }))
+      })
+      
+      await Promise.all(updatePromises)
+      
+      // 如果还有更多批次，等待一秒再继续
+      if (i + 10 < worksToUpdate.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
+    
     works.value = results.map(work => ({
       id: work.id,
       title: work.get('title') || t('profile.works.untitledWork'),
@@ -188,13 +224,13 @@ const fetchWorks = async () => {
       error: work.get('error'),
       createdAt: work.createdAt
     }))
-
+    
     // 为正在生成的作品设置状态检查
     works.value.forEach(work => {
       if (work.status === 'generating' && work.taskId && !checkIntervals.value[work.id]) {
         checkIntervals.value[work.id] = setInterval(() => {
           checkTaskStatus(work.taskId, work.id)
-        }, 10000) // 每10秒检查一次
+        }, 10000)
       }
     })
   } catch (error) {
@@ -296,7 +332,7 @@ const updateProfile = async () => {
     }
     
     await currentUser.save()
-    ElMessage.success('个人信息更新成功')
+    ElMessage.success('个人信息更新成功｜Profile updated successfully')
     isEditing.value = false
     
     // 重置表单
@@ -335,16 +371,16 @@ onUnmounted(() => {
 const handleRefresh = async () => {
   try {
     await fetchWorks()
-    ElMessage.success('刷新成功')
+    ElMessage.success('刷新成功｜Refresh success')
   } catch (error) {
     console.error('Refresh failed:', error)
-    ElMessage.error('刷新失败')
+    ElMessage.error('刷新失败｜Refresh failed')
   }
 }
 
 const handleWorkClick = (work) => {
   if (work.status !== 'completed') {
-    ElMessage.warning('作品尚未生成完成')
+    ElMessage.warning('作品尚未生成完成｜The work has not been generated yet')
     return
   }
   router.push(`/work/${work.id}`)
@@ -386,17 +422,17 @@ onMounted(async () => {
               @click="isEditing = true"
             >
               <el-icon><Edit /></el-icon>
-              编辑资料
+              edit
             </el-button>
             <template v-else>
-              <el-button @click="cancelEdit">取消</el-button>
+              <el-button @click="cancelEdit">cancel</el-button>
               <el-button 
                 type="primary"
                 @click="updateProfile"
                 :loading="loading"
                 class="glow-btn"
               >
-                保存
+                save
               </el-button>
             </template>
           </div>
@@ -409,6 +445,7 @@ onMounted(async () => {
               :src="avatarPreview || avatarUrl"
               @click="triggerAvatarUpload"
               class="avatar"
+              :alt="t('profile.user.avatar.upload')"
             >
               <div class="upload-overlay">
                 <el-icon><Upload /></el-icon>
@@ -417,7 +454,7 @@ onMounted(async () => {
             </el-avatar>
             <div class="user-status">
               <h3 class="username gradient-text">{{ form.username }}</h3>
-              <p class="join-date">注册时间：{{ new Date(form.createdAt).toLocaleDateString() }}</p>
+              <p class="join-date">{{ new Date(form.createdAt).toLocaleDateString() }}</p>
             </div>
           </div>
         </div>
@@ -526,9 +563,9 @@ onMounted(async () => {
                       size="small"
                       class="status-tag"
                     >
-                      {{ work.status === 'completed' ? '已完成' :
-                         work.status === 'generating' ? '生成中' :
-                         work.status === 'failed' ? '生成失败' : '草稿' }}
+                      {{ work.status === 'completed' ? 'Completed|已完成' :
+                         work.status === 'generating' ? 'Generating|生成中' :
+                         work.status === 'failed' ? 'Error' : 'Draft|草稿' }}
                     </el-tag>
                     <span v-if="work.status === 'generating'" class="progress-text">{{ work.progress }}%</span>
                   </div>

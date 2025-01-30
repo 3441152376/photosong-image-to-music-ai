@@ -11,7 +11,7 @@
         
         <h1 class="gradient-text">{{ t('pricing.title') }}</h1>
         <p class="subtitle">{{ t('pricing.subtitle') }}</p>
-      </div>
+          </div>
       
       <!-- 积分
       <div class="points-info glass-card">

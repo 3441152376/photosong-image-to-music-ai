@@ -2,6 +2,7 @@
 import { RouterView, useRoute } from 'vue-router'
 import { ElConfigProvider } from 'element-plus'
 import SeoMeta from './components/SeoMeta.vue'
+import CookieConsent from './components/CookieConsent.vue'
 import { computed } from 'vue'
 
 const route = useRoute()
@@ -45,6 +46,7 @@ const seoMeta = computed(() => {
   <el-config-provider>
     <SeoMeta v-bind="seoMeta" />
     <RouterView />
+    <CookieConsent />
   </el-config-provider>
 </template>
 

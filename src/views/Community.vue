@@ -27,35 +27,47 @@ const fetchWorks = async () => {
     query.limit(pageSize.value)
     query.skip((currentPage.value - 1) * pageSize.value)
     
-    // 获取总数
-    total.value = await query.count()
-    
-    // 获取作品列表
-    const results = await query.find()
-    works.value = results.map(work => ({
-      id: work.id,
-      title: work.get('title') || t('community.works.untitledWork'),
-      description: work.get('description') || '',
-      imageUrl: work.get('imageUrl') || '',
-      audioUrl: work.get('audioUrl') || '',
-      style: work.get('style') || '',
-      plays: work.get('plays') || 0,
-      createdAt: work.createdAt,
-      user: {
-        id: work.get('user')?.id,
-        username: work.get('user')?.get('username') || t('community.works.anonymousUser'),
-        avatar: (() => {
-          const avatar = work.get('user')?.get('avatar')
-          if (avatar instanceof AV.File) {
-            return avatar.url()
-          }
-          return avatar || '/default-avatar.png'
-        })()
+    try {
+      // 获取总数
+      total.value = await query.count()
+      
+      // 获取作品列表
+      const results = await query.find()
+      works.value = results.map(work => ({
+        id: work.id,
+        title: work.get('title') || t('community.works.untitledWork'),
+        description: work.get('description') || '',
+        imageUrl: work.get('imageUrl') || '',
+        audioUrl: work.get('audioUrl') || '',
+        style: work.get('style') || '',
+        plays: work.get('plays') || 0,
+        createdAt: work.createdAt,
+        user: {
+          id: work.get('user')?.id,
+          username: work.get('user')?.get('username') || t('community.works.anonymousUser'),
+          avatar: (() => {
+            const avatar = work.get('user')?.get('avatar')
+            if (avatar instanceof AV.File) {
+              return avatar.url()
+            }
+            return avatar || '/default-avatar.png'
+          })()
+        }
+      }))
+    } catch (error) {
+      if (error.code === 403) {
+        console.error('Access denied:', error)
+        ElMessage.error(t('errors.accessDenied'))
+      } else {
+        console.error('Fetch works failed:', error)
+        ElMessage.error(t('community.works.loadingError'))
       }
-    }))
+      works.value = []
+      total.value = 0
+    }
   } catch (error) {
-    console.error('Fetch works failed:', error)
-    ElMessage.error(t('community.works.loadingError'))
+    console.error('Query setup failed:', error)
+    ElMessage.error(t('errors.querySetupFailed'))
   } finally {
     loading.value = false
   }
@@ -70,31 +82,28 @@ const handlePageChange = (page) => {
 // 播放音乐
 const handlePlay = async (work) => {
   try {
-    // 获取原始作品对象
-    const query = new AV.Query('Work')
-    const workObj = await query.get(work.id)
-    
-    // 增加播放次数
-    const playsField = workObj.get('plays') || 0
-    workObj.set('plays', playsField + 1)
+    // 创建播放记录
+    const PlayRecord = AV.Object.extend('PlayRecord')
+    const playRecord = new PlayRecord()
+    playRecord.set('work', AV.Object.createWithoutData('Work', work.id))
+    playRecord.set('user', AV.User.current())
+    playRecord.set('ip', '')  // 可选：记录IP
     
     // 设置 ACL
     const acl = new AV.ACL()
     acl.setPublicReadAccess(true)
-    acl.setPublicWriteAccess(true)
-    workObj.setACL(acl)
+    playRecord.setACL(acl)
     
-    await workObj.save(null, {
-      fetchWhenSave: true
-    })
+    await playRecord.save()
     
     // 更新本地状态
-    work.plays = playsField + 1
+    work.plays += 1
     
     // 跳转到作品详情页
     router.push(`/work/${work.id}`)
   } catch (error) {
-    console.error('Update plays failed:', error)
+    console.error('Create play record failed:', error)
+    // 即使记录失败也允许跳转
     router.push(`/work/${work.id}`)
   }
 }

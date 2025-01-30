@@ -10,7 +10,7 @@ import { Microphone, Mute, CaretRight, VideoPause, Share, Download, Warning, Cal
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { isMobile } = useResponsive()
 
 const loading = ref(false)
@@ -162,46 +162,42 @@ const initVisualizer = () => {
 
 // 修改音频上下文初始化
 const initAudioContext = () => {
-  try {
-    if (!audioContext.value) {
+  if (!audioContext.value) {
+    try {
       audioContext.value = new (window.AudioContext || window.webkitAudioContext)()
+    } catch (error) {
+      console.error('Failed to initialize AudioContext:', error)
+      ElMessage.error(t('errors.audioInit'))
+      return false
     }
-    if (audioContext.value.state === 'suspended') {
-      audioContext.value.resume()
-    }
-    return true
-  } catch (error) {
-    console.error('Failed to initialize AudioContext:', error)
-    ElMessage.error(t('errors.audioInit'))
-    return false
   }
+  
+  if (audioContext.value.state === 'suspended') {
+    audioContext.value.resume().catch(console.error)
+  }
+  return true
 }
 
-// 修改播放函数
+// 修改播放处理函数
 const handlePlay = async () => {
+  if (!audioPlayer.value) return
+  
+  // 确保在用户交互时初始化 AudioContext
+  if (!initAudioContext()) return
+  
   try {
-    if (!audioPlayer.value) return
-    
-    if (!audioInitialized.value) {
-      audioInitialized.value = initAudioContext()
-      if (!audioInitialized.value) return
-    }
-
-    if (isPlaying.value) {
-      audioPlayer.value.pause()
-      isPlaying.value = false
-      isVisualizing.value = false
-    } else {
+    if (audioPlayer.value.paused) {
       await audioPlayer.value.play()
       isPlaying.value = true
-      if (audioInitialized.value) {
-        isVisualizing.value = true
-        initVisualizer()
-      }
+      startVisualization()
+    } else {
+      audioPlayer.value.pause()
+      isPlaying.value = false
+      stopVisualization()
     }
   } catch (error) {
-    console.error('Play failed:', error)
-    ElMessage.error(t('workDetail.error.playFailed'))
+    console.error('Play/pause failed:', error)
+    ElMessage.error(t('errors.playback'))
   }
 }
 
@@ -402,6 +398,21 @@ const fetchWork = async () => {
       throw new Error('作品不存在')
     }
     
+    // 获取播放次数
+    const playQuery = new AV.Query('PlayRecord')
+    playQuery.equalTo('work', result)
+    const playCount = await playQuery.count()
+    
+    // 确保 ACL 设置正确
+    const acl = result.getACL() || new AV.ACL()
+    acl.setPublicReadAccess(true)
+    // 只给作品所有者写入权限
+    const owner = result.get('user')
+    if (owner) {
+      acl.setWriteAccess(owner, true)
+    }
+    result.setACL(acl)
+    
     work.value = {
       id: result.id,
       title: result.get('title'),
@@ -412,9 +423,9 @@ const fetchWork = async () => {
       languages: result.get('languages') || [],
       relevance: result.get('relevance') || 'medium',
       imageAnalysis: result.get('imageAnalysis') || '',
-      plays: result.get('plays') || 0,
+      plays: playCount, // 使用实际的播放记录数
       lyrics: result.get('lyrics') || '',
-      status: result.get('status') || 'completed', // 设置默认状态为 completed
+      status: result.get('status') || 'completed',
       progress: result.get('progress') || 0,
       taskId: result.get('taskId'),
       error: result.get('error'),
@@ -464,26 +475,12 @@ onUnmounted(() => {
 onMounted(() => {
   fetchWork()
   
-  // 添加用户交互监听器
-  const handleUserInteraction = async () => {
-    try {
-      if (!audioContext.value) {
-        await initAudioContext()
-      }
-    } catch (error) {
-      console.warn('Failed to initialize audio context:', error)
-    }
+  // 只设置事件监听，不初始化 AudioContext
+  if (audioPlayer.value) {
+    audioPlayer.value.addEventListener('play', handleAudioPlay)
+    audioPlayer.value.addEventListener('pause', handleAudioPause)
+    audioPlayer.value.addEventListener('timeupdate', handleTimeUpdate)
   }
-  
-  // 监听用户交互事件
-  document.addEventListener('click', handleUserInteraction)
-  document.addEventListener('touchstart', handleUserInteraction)
-  
-  // 组件卸载时移除监听器
-  onUnmounted(() => {
-    document.removeEventListener('click', handleUserInteraction)
-    document.removeEventListener('touchstart', handleUserInteraction)
-  })
 })
 
 // Add computed property for avatar URL
@@ -577,6 +574,91 @@ const handleLyricsMouseLeave = () => {
     container.style.pointerEvents = 'auto'
   }
 }
+
+// Add meta tags and structured data
+const updateMetaTags = () => {
+  if (!work.value) return
+
+  // Get available languages
+  const languages = ['en', 'zh', 'ru']
+  
+  // Set meta tags
+  document.title = work.value[`title_${locale.value}`] || work.value.title || t('workDetail.untitledWork')
+  
+  // Update meta description
+  const metaDescription = document.querySelector('meta[name="description"]')
+  if (metaDescription) {
+    metaDescription.setAttribute('content', work.value[`description_${locale.value}`] || work.value.description || t('workDetail.defaultDescription'))
+  }
+  
+  // Add hreflang tags
+  languages.forEach(lang => {
+    let link = document.querySelector(`link[hreflang="${lang}"]`)
+    if (!link) {
+      link = document.createElement('link')
+      link.setAttribute('rel', 'alternate')
+      link.setAttribute('hreflang', lang)
+      document.head.appendChild(link)
+    }
+    link.setAttribute('href', `https://photosong.com/${lang}/work/${work.value.objectId}`)
+  })
+  
+  // Add x-default hreflang
+  let xDefaultLink = document.querySelector('link[hreflang="x-default"]')
+  if (!xDefaultLink) {
+    xDefaultLink = document.createElement('link')
+    xDefaultLink.setAttribute('rel', 'alternate')
+    xDefaultLink.setAttribute('hreflang', 'x-default')
+    document.head.appendChild(xDefaultLink)
+  }
+  xDefaultLink.setAttribute('href', `https://photosong.com/work/${work.value.objectId}`)
+  
+  // Add structured data
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'MusicComposition',
+    'name': work.value[`title_${locale.value}`] || work.value.title,
+    'creator': {
+      '@type': 'Person',
+      'name': work.value.creator?.username || t('workDetail.anonymousUser')
+    },
+    'dateCreated': work.value.createdAt,
+    'dateModified': work.value.updatedAt,
+    'image': work.value.imageUrl,
+    'audio': work.value.audioUrl,
+    'inLanguage': locale.value,
+    'description': work.value[`description_${locale.value}`] || work.value.description,
+    'url': `https://photosong.com/${locale.value}/work/${work.value.objectId}`,
+    'potentialAction': {
+      '@type': 'ListenAction',
+      'target': {
+        '@type': 'EntryPoint',
+        'urlTemplate': `https://photosong.com/${locale.value}/work/${work.value.objectId}`
+      }
+    }
+  }
+  
+  let scriptTag = document.querySelector('#work-structured-data')
+  if (!scriptTag) {
+    scriptTag = document.createElement('script')
+    scriptTag.id = 'work-structured-data'
+    scriptTag.type = 'application/ld+json'
+    document.head.appendChild(scriptTag)
+  }
+  scriptTag.textContent = JSON.stringify(structuredData)
+}
+
+// Update meta tags when work data changes
+watch(() => work.value, updateMetaTags, { immediate: true })
+watch(() => locale.value, updateMetaTags)
+
+// Clean up meta tags on component unmount
+onUnmounted(() => {
+  // Remove hreflang tags
+  document.querySelectorAll('link[hreflang]').forEach(el => el.remove())
+  // Remove structured data
+  document.querySelector('#work-structured-data')?.remove()
+})
 </script>
 
 <template>
@@ -593,7 +675,7 @@ const handleLyricsMouseLeave = () => {
               <img 
                 v-if="work?.imageUrl" 
                 :src="work.imageUrl" 
-                :alt="work.title"
+                :alt="work.title || t('workDetail.untitledWork')"
                 class="work-image"
                 @load="handleImageLoad"
               >

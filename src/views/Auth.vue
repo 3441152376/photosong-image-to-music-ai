@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Lock, Message, User, UserFilled } from '@element-plus/icons-vue'
 import AV from 'leancloud-storage'
 import TheNavbar from '../components/TheNavbar.vue'
@@ -250,6 +250,83 @@ const getFieldStatus = (field) => {
     return 'success'
   }
   return ''
+}
+
+const handleRegister = async () => {
+  try {
+    loading.value = true
+    await userStore.register(
+      form.value.username,
+      form.value.email,
+      form.value.password
+    )
+    ElMessage.success(t('auth.success.register'))
+    // 不再自动登录，显示验证邮件提示
+    ElMessageBox.alert(
+      t('auth.emailVerification.checkInbox'),
+      t('auth.emailVerification.required'),
+      {
+        confirmButtonText: t('common.ok'),
+        type: 'success',
+        showClose: false
+      }
+    )
+    // 切换到登录表单
+    isLogin.value = true
+  } catch (error) {
+    if (error.code === 203) {
+      ElMessage.error(t('auth.register.emailExists'))
+    } else if (error.code === 202) {
+      ElMessage.error(t('auth.register.usernameExists'))
+    } else {
+      ElMessage.error(error.message || t('auth.error.register'))
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleLogin = async () => {
+  try {
+    loading.value = true
+    await userStore.login(form.value.email, form.value.password)
+    ElMessage.success(t('auth.login.success'))
+    router.push(route.query.redirect || '/')
+  } catch (error) {
+    if (error.message === 'EMAIL_NOT_VERIFIED') {
+      ElMessageBox.confirm(
+        t('auth.emailVerification.checkInbox'),
+        t('auth.emailVerification.required'),
+        {
+          confirmButtonText: t('auth.emailVerification.resend'),
+          cancelButtonText: t('common.cancel'),
+          type: 'warning'
+        }
+      ).then(() => {
+        handleResendVerification()
+      }).catch(() => {})
+    } else if (error.code === 211) {
+      ElMessage.error(t('auth.login.invalidCredentials'))
+    } else if (error.code === 219) {
+      ElMessage.error(t('auth.login.tooManyAttempts'))
+    } else {
+      ElMessage.error(error.message || t('auth.login.failed'))
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleResendVerification = async () => {
+  try {
+    loading.value = true
+    await userStore.resendVerificationEmail(form.value.email)
+    ElMessage.success(t('auth.emailVerification.sent'))
+  } catch (error) {
+    ElMessage.error(error.message || t('auth.emailVerification.failed'))
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

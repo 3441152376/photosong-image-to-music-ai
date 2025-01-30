@@ -1,0 +1,38 @@
+{
+  "home": {
+    "newsAndCommunity": {
+      "title": "新闻与社区",
+      "description": "了解音乐技术的最新动态，与我们充满活力的社区保持联系",
+      "musicTech": {
+        "title": "音乐科技新闻",
+        "news1": {
+          "title": "AI音乐生成：作曲的未来",
+          "description": "探索人工智能如何革新音乐创作和作曲"
+        },
+        "news2": {
+          "title": "视觉音乐：音乐制作的新纪元",
+          "description": "视觉元素如何成为现代音乐制作中不可或缺的一部分"
+        },
+        "news3": {
+          "title": "音乐AI工具的演进",
+          "description": "深入了解AI驱动的音乐工具的最新发展"
+        }
+      },
+      "community": {
+        "title": "社区亮点",
+        "post1": {
+          "title": "创造视觉音乐体验",
+          "description": "社区成员Sarah Chen分享她将视觉与音乐结合的历程"
+        },
+        "post2": {
+          "title": "创新的音乐可视化技术",
+          "description": "Michael Rodriguez展示音乐可视化的独特方法"
+        },
+        "post3": {
+          "title": "AI艺术家：开拓新领域",
+          "description": "Emma Watson探索AI如何赋能新一代艺术家"
+        }
+      }
+    }
+  }
+} 

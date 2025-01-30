@@ -779,7 +779,6 @@ const handleCreate = async () => {
     // 设置 ACL
     const acl = new AV.ACL()
     acl.setPublicReadAccess(true)
-    acl.setPublicWriteAccess(false)
     acl.setWriteAccess(AV.User.current(), true)
     work.setACL(acl)
     

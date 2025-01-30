@@ -289,6 +289,68 @@ onUnmounted(() => {
   window.removeEventListener('resize', initParticles)
   window.removeEventListener('mousemove', handleParallax)
 })
+
+// 音乐科技新闻数据
+const musicTechNews = ref([
+  {
+    id: 1,
+    title: t('home.newsAndCommunity.musicTech.news1.title'),
+    description: t('home.newsAndCommunity.musicTech.news1.description'),
+    image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&w=800&h=450&fit=crop',
+    url: 'https://www.billboard.com/business/streaming/universal-music-group-ai-music-streaming-policy-1235584439/',
+    source: 'Billboard',
+    date: '2024-02-20'
+  },
+  {
+    id: 2,
+    title: t('home.newsAndCommunity.musicTech.news2.title'),
+    description: t('home.newsAndCommunity.musicTech.news2.description'),
+    image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&w=800&h=450&fit=crop',
+    url: 'https://www.rollingstone.com/culture/culture-news/grimes-ai-voice-clone-platform-elf-tech-1234961019/',
+    source: 'Rolling Stone',
+    date: '2024-02-08'
+  },
+  {
+    id: 3,
+    title: t('home.newsAndCommunity.musicTech.news3.title'),
+    description: t('home.newsAndCommunity.musicTech.news3.description'),
+    image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&w=800&h=450&fit=crop',
+    url: 'https://www.musicbusinessworldwide.com/youtube-launches-dream-track-ai-music-tool-with-major-labels-backing1/',
+    source: 'Music Business Worldwide',
+    date: '2024-02-15'
+  }
+])
+
+// 社区动态数据
+const communityPosts = ref([
+  {
+    id: 1,
+    title: t('home.newsAndCommunity.community.post1.title'),
+    description: t('home.newsAndCommunity.community.post1.description'),
+    image: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?auto=format&w=800&h=450&fit=crop',
+    url: 'https://huggingface.co/blog/musicgen',
+    author: 'Hugging Face',
+    date: '2024-02-01'
+  },
+  {
+    id: 2,
+    title: t('home.newsAndCommunity.community.post2.title'),
+    description: t('home.newsAndCommunity.community.post2.description'),
+    image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&w=800&h=450&fit=crop',
+    url: 'https://pytorch.org/blog/pytorch-2-2/',
+    author: 'PyTorch Team',
+    date: '2024-01-24'
+  },
+  {
+    id: 3,
+    title: t('home.newsAndCommunity.community.post3.title'),
+    description: t('home.newsAndCommunity.community.post3.description'),
+    image: 'https://images.unsplash.com/photo-1513829596324-4bb2800c5efb?auto=format&w=800&h=450&fit=crop',
+    url: 'https://stability.ai/news/stable-audio-one-point-zero-release',
+    author: 'Stability AI',
+    date: '2024-01-30'
+  }
+])
 </script>
 
 <template>
@@ -475,7 +537,7 @@ onUnmounted(() => {
           <div class="work-media">
             <img 
               :src="work.imageUrl" 
-              :alt="work.title"
+              :alt="work.title || t('workDetail.untitledWork')"
               class="work-image"
               loading="lazy"
             >
@@ -597,6 +659,64 @@ onUnmounted(() => {
         <div class="decoration-dots"></div>
       </div>
     </section>
+    
+    <!-- 在 featured works section 后添加 -->
+    <div class="section news-community">
+      <div class="section-header">
+        <h2 class="section-title">{{ t('home.newsAndCommunity.title') }}</h2>
+        <p class="section-description">{{ t('home.newsAndCommunity.description') }}</p>
+      </div>
+      
+      <div class="news-grid">
+        <!-- 音乐科技新闻 -->
+        <div class="news-category">
+          <h3>{{ t('home.newsAndCommunity.musicTech.title') }}</h3>
+          <div class="news-list">
+            <a v-for="news in musicTechNews" 
+               :key="news.id"
+               :href="news.url"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="news-card"
+            >
+              <img :src="news.image" :alt="news.title" class="news-image">
+              <div class="news-content">
+                <h4>{{ news.title }}</h4>
+                <p>{{ news.description }}</p>
+                <div class="news-meta">
+                  <span class="news-source">{{ news.source }}</span>
+                  <span class="news-date">{{ news.date }}</span>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+        
+        <!-- 社区动态 -->
+        <div class="news-category">
+          <h3>{{ t('home.newsAndCommunity.community.title') }}</h3>
+          <div class="news-list">
+            <a v-for="post in communityPosts" 
+               :key="post.id"
+               :href="post.url"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="news-card"
+            >
+              <img :src="post.image" :alt="post.title" class="news-image">
+              <div class="news-content">
+                <h4>{{ post.title }}</h4>
+                <p>{{ post.description }}</p>
+                <div class="news-meta">
+                  <span class="news-author">{{ post.author }}</span>
+                  <span class="news-date">{{ post.date }}</span>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
     
     <TheFooter />
   </div>
@@ -1807,6 +1927,7 @@ onUnmounted(() => {
     font-weight: 700;
     margin-bottom: 1rem;
     background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
@@ -1821,5 +1942,103 @@ onUnmounted(() => {
 
 .text-center {
   text-align: center;
+}
+
+.news-community {
+  background: var(--surface-color);
+  border-radius: 1.5rem;
+  padding: 4rem 0;
+  margin: 4rem 0;
+}
+
+.news-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-top: 3rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.news-category {
+  h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-color);
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+.news-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.news-card {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.05);
+  }
+  
+  @media (max-width: 640px) {
+    flex-direction: column;
+  }
+}
+
+.news-image {
+  width: 200px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  
+  @media (max-width: 640px) {
+    width: 100%;
+    height: 160px;
+  }
+}
+
+.news-content {
+  flex: 1;
+  
+  h4 {
+    font-size: 1.125rem;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+  }
+  
+  p {
+    color: var(--text-color-secondary);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+}
+
+.news-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  
+  .news-source,
+  .news-author {
+    color: var(--primary-color);
+    font-weight: 500;
+  }
 }
 </style> 

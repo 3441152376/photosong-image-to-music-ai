@@ -21,7 +21,8 @@ export const useUserStore = defineStore('user', () => {
           createdAt: user.get('createdAt'),
           points: user.get('points') || 0,
           membershipEndDate: user.get('membershipEndDate'),
-          isVIP: user.get('membershipEndDate') ? new Date(user.get('membershipEndDate')) > new Date() : false
+          isVIP: user.get('membershipEndDate') ? new Date(user.get('membershipEndDate')) > new Date() : false,
+          isAdmin: user.get('isAdmin') || false
         }
       }
     } catch (err) {
@@ -51,6 +52,13 @@ export const useUserStore = defineStore('user', () => {
 
       const user = await AV.User.logIn(email, password)
       
+      // 检查邮箱是否已验证
+      if (!user.get('emailVerified')) {
+        // 如果邮箱未验证，重新发送验证邮件
+        await AV.User.requestEmailVerify(email)
+        throw new Error('EMAIL_NOT_VERIFIED')
+      }
+      
       currentUser.value = {
         id: user.id,
         username: user.get('username'),
@@ -59,7 +67,8 @@ export const useUserStore = defineStore('user', () => {
         createdAt: user.get('createdAt'),
         points: user.get('points') || 0,
         membershipEndDate: user.get('membershipEndDate'),
-        isVIP: user.get('membershipEndDate') ? new Date(user.get('membershipEndDate')) > new Date() : false
+        isVIP: user.get('membershipEndDate') ? new Date(user.get('membershipEndDate')) > new Date() : false,
+        isAdmin: user.get('isAdmin') || false
       }
       
       return currentUser.value
@@ -100,28 +109,43 @@ export const useUserStore = defineStore('user', () => {
       user.setEmail(email)
       user.setPassword(password)
       
+      // 设置默认头像
       if (avatar) {
-        user.set('avatar', avatar)
+        if (avatar instanceof AV.File) {
+          user.set('avatar', avatar)
+        } else if (typeof avatar === 'string') {
+          // 如果是字符串URL，创建File对象
+          const avatarFile = new AV.File('avatar.jpg', { base64: avatar })
+          user.set('avatar', avatarFile)
+        }
+      } else {
+        try {
+          // 获取默认头像图片数据
+          const response = await fetch('/default-avatar.png')
+          const blob = await response.blob()
+          const defaultAvatarFile = new AV.File('default-avatar.png', blob)
+          user.set('avatar', defaultAvatarFile)
+        } catch (error) {
+          console.error('Failed to load default avatar:', error)
+          // 如果加载默认头像失败，继续注册流程但不设置头像
+        }
       }
       
       // 设置初始积分和会员状态
       user.set('points', 0)
       user.set('membershipEndDate', null)
+      user.set('emailVerified', false)
       
       await user.signUp()
       
-      currentUser.value = {
-        id: user.id,
-        username: user.get('username'),
-        email: user.get('email'),
-        avatar: user.get('avatar'),
-        createdAt: user.get('createdAt'),
-        points: 0,
-        membershipEndDate: null,
-        isVIP: false
-      }
+      // 注册成功后立即登出，确保用户在验证邮箱前不会处于登录状态
+      await AV.User.logOut()
+      currentUser.value = null
       
-      return currentUser.value
+      return {
+        success: true,
+        message: 'REGISTER_SUCCESS_CHECK_EMAIL'
+      }
     } catch (err) {
       console.error('Registration failed:', err)
       error.value = err.message
@@ -252,6 +276,23 @@ export const useUserStore = defineStore('user', () => {
     return new Date(endDate) > new Date()
   }
 
+  // 重新发送验证邮件
+  const resendVerificationEmail = async (email) => {
+    try {
+      loading.value = true
+      error.value = null
+      
+      await AV.User.requestEmailVerify(email)
+      return true
+    } catch (err) {
+      console.error('Resend verification email failed:', err)
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // 初始化时检查用户状态
   initializeUser()
 
@@ -266,6 +307,7 @@ export const useUserStore = defineStore('user', () => {
     updateUserInfo,
     updatePassword,
     resetPassword,
-    checkMembership
+    checkMembership,
+    resendVerificationEmail
   }
 }) 

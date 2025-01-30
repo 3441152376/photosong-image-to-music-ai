@@ -1,10 +1,47 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { ref } from 'vue'
 
 const router = useRouter()
 const { t } = useI18n()
 const currentYear = new Date().getFullYear()
+
+// 友情链接数据
+const friendlyLinks = ref([
+  {
+    name: 'MuseScore',
+    url: 'https://musescore.com'
+  },
+  {
+    name: 'Music Tech News',
+    url: 'https://www.musictech.net'
+  },
+  {
+    name: 'Sound On Sound',
+    url: 'https://www.soundonsound.com'
+  },
+  {
+    name: 'Music Radar',
+    url: 'https://www.musicradar.com'
+  },
+  {
+    name: 'KVR Audio',
+    url: 'https://www.kvraudio.com'
+  },
+  {
+    name: 'Splice',
+    url: 'https://splice.com'
+  },
+  {
+    name: 'Bandcamp',
+    url: 'https://bandcamp.com'
+  },
+  {
+    name: 'Hugging Face',
+    url: 'https://huggingface.co'
+  }
+])
 </script>
 
 <template>
@@ -42,10 +79,10 @@ const currentYear = new Date().getFullYear()
         <div class="footer-section">
           <h4>{{ t('footer.help.title') }}</h4>
           <ul class="footer-links">
-            <li><a href="#">{{ t('footer.help.tutorial') }}</a></li>
-            <li><a href="#">{{ t('footer.help.faq') }}</a></li>
-            <li><a href="#">{{ t('footer.help.contact') }}</a></li>
-            <li><a href="#">{{ t('footer.help.feedback') }}</a></li>
+            <li><a @click="router.push('/tutorial')">{{ t('footer.help.tutorial') }}</a></li>
+            <li><a @click="router.push('/faq')">{{ t('footer.help.faq') }}</a></li>
+            <li><a @click="router.push('/contact')">{{ t('footer.help.contact') }}</a></li>
+            <li><a @click="router.push('/feedback')">{{ t('footer.help.feedback') }}</a></li>
           </ul>
         </div>
         
@@ -70,9 +107,26 @@ const currentYear = new Date().getFullYear()
           {{ t('footer.copyright', { year: currentYear }) }}
         </div>
         <div class="legal-links">
-          <a href="#">{{ t('footer.links.privacy') }}</a>
-          <a href="#">{{ t('footer.links.terms') }}</a>
-          <a href="#">{{ t('footer.links.disclaimer') }}</a>
+          <a @click="router.push('/privacy')">{{ t('footer.links.privacy') }}</a>
+          <a @click="router.push('/terms')">{{ t('footer.links.terms') }}</a>
+          <a @click="router.push('/disclaimer')">{{ t('footer.links.disclaimer') }}</a>
+        </div>
+      </div>
+      
+      <!-- 添加友情链接部分 -->
+      <div class="footer-section friendly-links">
+        <h3>{{ t('footer.friendlyLinks.title') }}</h3>
+        <div class="links-grid">
+          <a 
+            v-for="link in friendlyLinks" 
+            :key="link.url" 
+            :href="link.url" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="friendly-link"
+          >
+            {{ link.name }}
+          </a>
         </div>
       </div>
     </div>
@@ -234,6 +288,49 @@ const currentYear = new Date().getFullYear()
         color: var(--primary-color);
       }
     }
+  }
+}
+
+.friendly-links {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+  
+  h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+.links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.friendly-link {
+  color: var(--text-color-secondary);
+  text-decoration: none;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  
+  &:hover {
+    color: var(--text-color);
+    background: rgba(var(--primary-color-rgb), 0.1);
+    transform: translateY(-2px);
   }
 }
 

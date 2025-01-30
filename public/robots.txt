@@ -1,0 +1,45 @@
+# Global rules
+User-agent: *
+Allow: /
+Allow: /community
+Allow: /pricing
+Allow: /work/
+Allow: /sitemap.xml
+Allow: /works-sitemap.xml
+Disallow: /auth
+Disallow: /create
+Disallow: /profile
+Disallow: /reset-password
+Disallow: /api/
+Disallow: /admin/
+Disallow: /*.json$
+Disallow: /*?*
+
+# Allow language-specific paths
+Allow: /en/
+Allow: /ru/
+Allow: /zh/
+
+# Sitemaps
+Sitemap: https://photosong.com/sitemap.xml
+Sitemap: https://photosong.com/works-sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 5
+
+# Specific rules for major search engines
+User-agent: Googlebot
+Crawl-delay: 1
+
+User-agent: Bingbot
+Crawl-delay: 2
+
+User-agent: Yandexbot
+Crawl-delay: 2
+
+# Block certain bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: / 

@@ -1,0 +1,38 @@
+{
+  "home": {
+    "newsAndCommunity": {
+      "title": "News & Community",
+      "description": "Stay updated with the latest in music technology and connect with our vibrant community",
+      "musicTech": {
+        "title": "Music Tech News",
+        "news1": {
+          "title": "AI Music Generation: The Future of Composition",
+          "description": "Exploring how artificial intelligence is revolutionizing music creation and composition"
+        },
+        "news2": {
+          "title": "Visual Music: A New Era of Music Production",
+          "description": "How visual elements are becoming an integral part of modern music production"
+        },
+        "news3": {
+          "title": "The Evolution of Music AI Tools",
+          "description": "A deep dive into the latest developments in AI-powered music tools"
+        }
+      },
+      "community": {
+        "title": "Community Highlights",
+        "post1": {
+          "title": "Creating Visual Music Experiences",
+          "description": "Community member Sarah Chen shares her journey in combining visuals with music"
+        },
+        "post2": {
+          "title": "Innovative Music Visualization Techniques",
+          "description": "Michael Rodriguez demonstrates unique approaches to visualizing music"
+        },
+        "post3": {
+          "title": "AI Artists: Breaking New Ground",
+          "description": "Emma Watson explores how AI is empowering a new generation of artists"
+        }
+      }
+    }
+  }
+} 
