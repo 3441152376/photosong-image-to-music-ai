@@ -1,4 +1,15 @@
 {
+  "payment": {
+    "success": {
+      "title": "Payment Successful",
+      "message": "Thank you for your purchase! Your account has been updated.",
+      "continue": "Continue to Dashboard"
+    },
+    "errors": {
+      "checkoutFailed": "Failed to initiate checkout. Please try again.",
+      "unauthorized": "Please log in to make a purchase."
+    }
+  },
   "home": {
     "newsAndCommunity": {
       "title": "News & Community",
@@ -35,4 +46,4 @@
       }
     }
   }
-} 
+}  

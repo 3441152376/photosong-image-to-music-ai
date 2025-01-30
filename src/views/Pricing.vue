@@ -50,7 +50,7 @@
               <span>{{ t(`pricing.plans.starter.features.${feature}`) }}</span>
             </div>
           </div>
-          <el-button type="primary" class="subscribe-btn" @click="handleSubscribe('trial')">
+          <el-button type="primary" class="subscribe-btn" :loading="isLoading" @click="handleSubscribe('trial')">
             {{ t('pricing.plans.button') }}
           </el-button>
         </div>
@@ -74,7 +74,7 @@
               <span>{{ t(`pricing.plans.advanced.features.${feature}`) }}</span>
             </div>
           </div>
-          <el-button type="primary" class="subscribe-btn glow" @click="handleSubscribe('pro')">
+          <el-button type="primary" class="subscribe-btn glow" :loading="isLoading" @click="handleSubscribe('pro')">
             {{ t('pricing.plans.button') }}
           </el-button>
         </div>
@@ -97,7 +97,7 @@
               <span>{{ t(`pricing.plans.pro.features.${feature}`) }}</span>
             </div>
           </div>
-          <el-button type="primary" class="subscribe-btn" @click="handleSubscribe('premium')">
+          <el-button type="primary" class="subscribe-btn" :loading="isLoading" @click="handleSubscribe('premium')">
             {{ t('pricing.plans.button') }}
           </el-button>
         </div>
@@ -120,7 +120,7 @@
               <span>{{ t(`pricing.plans.lifetime.features.${feature}`) }}</span>
             </div>
           </div>
-          <el-button type="primary" class="subscribe-btn special-btn" @click="handleSubscribe('lifetime')">
+          <el-button type="primary" class="subscribe-btn special-btn" :loading="isLoading" @click="handleSubscribe('lifetime')">
             {{ t('pricing.plans.button') }}
           </el-button>
         </div>
@@ -151,7 +151,8 @@
               type="primary" 
               class="purchase-btn"
               :class="{ 'glow': index === 1 }"
-              @click="handlePurchase(pkg)"
+              :loading="isLoading"
+              @click="handlePurchase(pkg, index)"
             >
               {{ t('pricing.points.packages.buyNow') }}
             </el-button>
@@ -221,10 +222,34 @@ import {
 } from '@element-plus/icons-vue'
 import TheNavbar from '../components/TheNavbar.vue'
 import { useRouter } from 'vue-router'
+import { loadStripe } from '@stripe/stripe-js'
+import { ElMessage } from 'element-plus'
+import { useUserStore } from '../stores/user'
+import AV from 'leancloud-storage'
 import pricingConfig from '../config/pricing.json'
+
+const PRICE_MAP = {
+  trial: 'price_1QlYNRHVMy0i1BlJA1y0DxB2',
+  pro: 'pprice_1QlYO1HVMy0i1BlJyDD3GlsN',
+  premium: 'price_1QlYOaHVMy0i1BlJ1ZpdOMAO',
+  lifetime: 'price_1QlYOrHVMy0i1BlJDHxIswM7'
+}
+
+const POINTS_PRICE_MAP = {
+  0: 'price_1Qme87HVMy0i1BlJR1PRWOgz',
+  1: 'price_1Qme9BHVMy0i1BlJwFyjwZwj',
+  2: 'price_1QmeA6HVMy0i1BlJQD5dc34Z'
+}
 
 const router = useRouter()
 const { t } = useI18n()
+const userStore = useUserStore()
+const isLoading = ref(false)
+const stripe = ref(null)
+
+onMounted(async () => {
+  stripe.value = await loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
+})
 
 // 处理 AudioContext
 const initAudioContext = () => {
@@ -255,23 +280,60 @@ onMounted(() => {
 })
 
 const handleSubscribe = async (plan) => {
-  try {
-    router.push({
+  if (!userStore.currentUser) {
+    return router.push({
       path: '/auth',
       query: { plan }
     })
+  }
+
+  try {
+    isLoading.value = true
+    const { sessionId } = await AV.Cloud.run('createStripeCheckoutSession', {
+      priceId: PRICE_MAP[plan],
+      userId: userStore.currentUser.id,
+      planType: 'subscription',
+      plan
+    })
+    const result = await stripe.value.redirectToCheckout({ sessionId })
+    
+    if (result.error) {
+      throw new Error(result.error.message)
+    }
   } catch (error) {
     console.error('Subscribe failed:', error)
+    ElMessage.error(t('pricing.errors.checkoutFailed'))
+  } finally {
+    isLoading.value = false
   }
 }
 
-const selectPackage = async (index) => {
+const handlePurchase = async (pkg, index) => {
+  if (!userStore.currentUser) {
+    return router.push({
+      path: '/auth',
+      query: { points: pkg.points }
+    })
+  }
+
   try {
-    const packages = pricingConfig.points.packages
-    const selected = packages[index]
-    // TODO: 实现购买逻辑
+    isLoading.value = true
+    const { sessionId } = await AV.Cloud.run('createStripeCheckoutSession', {
+      priceId: POINTS_PRICE_MAP[index],
+      userId: userStore.currentUser.id,
+      planType: 'points',
+      points: pkg.points
+    })
+    const result = await stripe.value.redirectToCheckout({ sessionId })
+    
+    if (result.error) {
+      throw new Error(result.error.message)
+    }
   } catch (error) {
     console.error('Purchase failed:', error)
+    ElMessage.error(t('pricing.errors.checkoutFailed'))
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -685,4 +747,4 @@ const getBenefitDetails = (key) => {
     box-shadow: 0 6px 24px rgba(var(--primary-color-rgb), 0.4);
   }
 }
-</style> 
+</style>    

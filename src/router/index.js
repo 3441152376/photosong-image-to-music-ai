@@ -6,6 +6,16 @@ import { generateWorksSitemap, generateMainSitemap } from '../utils/sitemap'
 
 const routes = [
   {
+    path: '/payment/success',
+    name: 'PaymentSuccess',
+    component: () => import('../views/PaymentSuccess.vue'),
+    meta: {
+      title: 'Payment Successful - Photo Song',
+      description: 'Your payment has been processed successfully.',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/',
     name: 'Home',
     component: () => import('../views/Home.vue'),
@@ -342,4 +352,4 @@ router.afterEach((to, from) => {
   // 这里可以添加页面访问统计等逻辑
 })
 
-export default router 
+export default router  
