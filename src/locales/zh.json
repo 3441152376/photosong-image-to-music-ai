@@ -1,4 +1,15 @@
 {
+  "payment": {
+    "success": {
+      "title": "支付成功",
+      "message": "感谢您的购买！您的账户已更新。",
+      "continue": "返回仪表板"
+    },
+    "errors": {
+      "checkoutFailed": "创建支付失败，请重试。",
+      "unauthorized": "请登录后再进行购买。"
+    }
+  },
   "home": {
     "newsAndCommunity": {
       "title": "新闻与社区",
@@ -35,4 +46,4 @@
       }
     }
   }
-} 
+}  
