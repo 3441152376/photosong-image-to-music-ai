@@ -247,8 +247,8 @@ export default {
   },
   create: {
     title: 'AI 音乐创作',
-    subtitle: '上传图片，让 AI 为你创作专属音乐',
-    description: '使用人工智能技术，将您的照片转化为独特的音乐作品。只需上传一张照片，即可获得AI创作的专属音乐，让每一张照片都能唱出属于自己的歌。',
+    subtitle: '上传照片，让 AI 为您创作独特的音乐',
+    description: '使用 AI 技术将您的照片转化为独特的音乐作品。上传图片后，我们的高级 AI 将分析其内容、情感和风格，为您创作个性化的音乐作品。',
     points: {
       label: '积分',
       buy: '购买积分'
@@ -279,21 +279,54 @@ export default {
     },
     style: {
       title: '音乐风格',
+      descriptions: {
+        pop: '现代流行音乐风格，富有感染力的旋律和节奏',
+        rock: '充满能量的摇滚风格，强劲的吉他和鼓点',
+        electronic: '现代电子音乐，包含合成器和电子节拍',
+        classical: '优美的古典音乐风格，优雅的管弦乐编排',
+        jazz: '优雅的爵士风格，即兴演奏和复杂和声',
+        folk: '温暖的民谣风格，真挚的歌词和原声乐器',
+        rnb: '富有灵魂的节奏布鲁斯，感性的声线',
+        hiphop: '节奏感强的嘻哈风格，富有韵律',
+        ambient: '空灵的氛围音乐，创造沉浸体验',
+        edm: '充满活力的电子舞曲，强劲的节奏和高潮',
+        metal: '重金属音乐，失真吉他和双踩鼓',
+        indie: '独立音乐风格，独特的创意表达',
+        soul: '富有感染力的灵魂乐，情感表现力强',
+        blues: '传统蓝调音乐，深沉的情感表达',
+        funk: '节奏感强的放克音乐，强调贝斯和律动'
+      },
+      tags: {
+        pop: ['现代', '旋律', '流行'],
+        rock: ['电吉他', '鼓点', '能量'],
+        electronic: ['合成器', '电子', '舞曲'],
+        jazz: ['平滑', '即兴', '复杂'],
+        classical: ['管弦乐', '优雅', '器乐'],
+        folk: ['原声', '叙事', '温暖'],
+        rnb: ['灵魂', '律动', '情感'],
+        hiphop: ['说唱', '节拍', '韵律'],
+        ambient: ['氛围', '平和', '空灵'],
+        edm: ['舞曲', '能量', '派对'],
+        metal: ['重型', '失真', '强烈'],
+        indie: ['另类', '独特', '创意'],
+        soul: ['情感', '有力', '表现'],
+        blues: ['情感', '传统', '灵魂'],
+        funk: ['律动', '节奏', '贝斯']
+      },
       pop: '流行',
       rock: '摇滚',
       electronic: '电子',
-      classical: '古典',
       jazz: '爵士',
+      classical: '古典',
       folk: '民谣',
-      hiphop: '嘻哈',
       rnb: 'R&B',
-      country: '乡村',
-      blues: '蓝调',
+      hiphop: '嘻哈',
       ambient: '氛围',
       edm: '电子舞曲',
       metal: '金属',
       indie: '独立',
       soul: '灵魂',
+      blues: '蓝调',
       funk: '放克'
     },
     language: {
@@ -303,9 +336,16 @@ export default {
       singleDesc: '仅使用选定的语言',
       mixedDesc: '在歌词中混合使用多种语言',
       options: {
-        zh: '中文',
-        en: '英文',
-        mixed: '中英混合'
+        chinese: '中文',
+        english: '英文',
+        japanese: '日语',
+        korean: '韩语',
+        french: '法语',
+        spanish: '西班牙语',
+        german: '德语',
+        italian: '意大利语',
+        russian: '俄语',
+        instrumental: '纯音乐'
       }
     },
     length: {
@@ -321,6 +361,20 @@ export default {
       long: {
         label: '较长',
         description: '3-4节，适合复杂故事'
+      },
+      options: {
+        short: {
+          label: '简短',
+          description: '1-2节，适合简单表达'
+        },
+        medium: {
+          label: '中等',
+          description: '2-3节，标准流行歌曲长度'
+        },
+        long: {
+          label: '较长',
+          description: '3-4节，适合复杂故事'
+        }
       }
     },
     lyrics: {
@@ -517,15 +571,29 @@ export default {
     anonymousUser: '匿名用户'
   },
   pricing: {
-    title: '会员权益',
-    subtitle: '解锁AI音乐创作的无限可能',
+    title: '选择您的套餐',
+    subtitle: '将照片转化为音乐',
+    description: '选择最适合您创作需求的套餐',
+    loginPrompt: {
+      title: '登录后订阅',
+      description: '请登录或注册账号以购买会员或积分',
+      button: '立即登录'
+    },
+    basic: {
+      title: '基础版',
+      description: '适合个人创作者的入门选择'
+    },
+    pro: {
+      title: '专业版',
+      description: '为专业创作者提供的全方位解决方案'
+    },
     plans: {
       period: {
         month: '月',
         year: '年',
         lifetime: '永久'
       },
-      button: '立即订阅',
+      button: '即将上线',
       starter: {
         name: '体验会员',
         features: {
@@ -569,6 +637,34 @@ export default {
         }
       }
     },
+    membership: {
+      mostPopular: '最受欢迎',
+      benefits: {
+        title: '会员特权',
+        features: {
+          advanced: {
+            title: '高级 AI 功能',
+            description: '解锁高级 AI 音乐生成功能',
+            details: '多种音乐风格和流派\n高级风格控制\n高品质音频输出\n延长音乐时长\n自定义音乐参数\n批量生成功能'
+          },
+          templates: {
+            title: '专业模板',
+            description: '使用专业音乐模板',
+            details: '预设音乐模板\n行业标准编曲\n场景快速启动\n定期模板更新\n自定义模板保存\n模板分享功能'
+          },
+          copyright: {
+            title: '版权保护',
+            description: '完整的生成音乐版权所有权',
+            details: '完整商业使用权\n版权证书\n法律文档\n使用追踪工具\n版权登记服务\n侵权监控'
+          },
+          priority: {
+            title: '优先服务',
+            description: '享受优先处理和支持服务',
+            details: '优先生成队列\n24/7 客户支持\n更快处理速度\n专属会员活动\nVIP专线支持\n定制化服务'
+          }
+        }
+      }
+    },
     points: {
       title: '购买积分',
       unit: '积分',
@@ -590,53 +686,32 @@ export default {
         }
       }
     },
-    membership: {
-      mostPopular: '最受欢迎',
-      benefits: {
-        title: '会员特权',
-        features: {
-          advanced: {
-            title: '高级 AI 功能',
-            description: '解锁高级 AI 音乐生成功能',
-            details: [
-              '多种音乐风格和流派',
-              '高级风格控制',
-              '高品质音频输出',
-              '延长音乐时长'
-            ]
-          },
-          templates: {
-            title: '专业模板',
-            description: '使用专业音乐模板',
-            details: [
-              '预设音乐模板',
-              '行业标准编曲',
-              '场景快速启动',
-              '定期模板更新'
-            ]
-          },
-          copyright: {
-            title: '版权保护',
-            description: '完整的生成音乐版权所有权',
-            details: [
-              '完整商业使用权',
-              '版权证书',
-              '法律文档',
-              '使用追踪工具'
-            ]
-          },
-          priority: {
-            title: '优先服务',
-            description: '享受优先处理和支持',
-            details: [
-              '优先生成队列',
-              '24/7 客户支持',
-              '更快处理速度',
-              '专属会员活动'
-            ]
-          }
-        }
-      }
+    errors: {
+      checkoutFailed: '支付初始化失败，请稍后重试'
+    },
+    comingSoon: {
+      payment: '支付功能即将上线',
+      points: '积分购买功能即将上线'
+    },
+    error: {
+      checkout: '创建支付会话失败，请重试',
+      noSession: '无效的支付会话',
+    },
+    status: {
+      checking: '正在确认支付状态',
+      wait: '请稍候，我们正在处理您的订单...',
+      error: '支付状态确认失败',
+      processing: '支付处理中',
+      processingMessage: '您的支付正在处理中，请稍候...',
+      failed: '支付失败',
+      failedMessage: '很抱歉，支付未能完成，请重试',
+      retry: '重新支付',
+      tryAgain: '重新尝试'
+    },
+    success: {
+      title: '支付成功',
+      message: '感谢您的购买！您的订单已确认',
+      continue: '继续使用'
     }
   },
   auth: {
@@ -813,7 +888,12 @@ export default {
     buy: '购买积分',
     label: '积分',
     perUSD: '1美元 = {points}积分',
-    description: '创作一首歌曲需要100积分'
+    description: '创作一首歌曲需要100积分',
+    success: {
+      deducted: '已扣除 {points} 积分',
+      refunded: '已退还 {points} 积分',
+      purchased: '已购买 {points} 积分'
+    }
   },
   notice: {
     title: '创作提示',
@@ -1212,5 +1292,16 @@ export default {
       contact: '联系我们',
       terms: '用户协议'
     }
+  },
+  success: {
+    upload: '上传成功',
+    save: '保存成功',
+    update: '更新成功',
+    delete: '删除成功',
+    share: '分享成功',
+    copy: '复制成功',
+    download: '下载成功',
+    generate: '生成成功',
+    publish: '发布成功'
   }
 } 

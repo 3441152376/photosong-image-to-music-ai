@@ -3,14 +3,23 @@ import { useUserStore } from '../stores/user'
 import { ElMessage } from 'element-plus'
 import AV from 'leancloud-storage'
 import { generateWorksSitemap, generateMainSitemap } from '../utils/sitemap'
+import i18n from '../i18n'
+import { useI18n } from 'vue-i18n'
 
-const routes = [
+// 定义支持的语言列表
+const supportedLocales = ['zh', 'en', 'ru']
+
+// 获取翻译函数
+const t = i18n.global.t
+
+// 基础路由配置
+const baseRoutes = [
   {
     path: '/payment/success',
     name: 'PaymentSuccess',
     component: () => import('../views/PaymentSuccess.vue'),
     meta: {
-      title: 'Payment Successful - Photo Song',
+      title: 'payment.success.title',
       description: 'Your payment has been processed successfully.',
       requiresAuth: true
     }
@@ -106,14 +115,14 @@ const routes = [
     name: 'WorkDetail',
     component: () => import('../views/WorkDetail.vue'),
     meta: {
-      title: 'Photo Music Creation | Photo Song',
-      description: 'Listen to this unique musical piece generated from a photo using AI technology.',
+      title: route => t('workDetail.meta.title'),
+      description: route => t('workDetail.meta.description'),
       keywords: 'photo music creation, AI generated music, photo song',
       requiresAuth: false,
       schema: {
         '@type': 'MusicComposition',
-        name: 'Photo Music Creation',
-        description: 'AI-generated music from photo'
+        name: route => t('workDetail.meta.schemaName'),
+        description: route => t('workDetail.meta.schemaDescription')
       }
     },
     props: true
@@ -194,154 +203,84 @@ const routes = [
   }
 ]
 
+// 生成带语言前缀的路由
+const generateLocalizedRoutes = (routes) => {
+  const localizedRoutes = []
+  
+  // 添加默认路由（无语言前缀，重定向到用户首选语言）
+  localizedRoutes.push({
+    path: '/',
+    redirect: () => `/${i18n.global.locale.value}`
+  })
+
+  // 为每种语言生成路由
+  supportedLocales.forEach(locale => {
+    routes.forEach(route => {
+      const localizedRoute = {
+        ...route,
+        path: route.path === '/' ? `/${locale}` : `/${locale}${route.path}`,
+        name: route.name ? `${locale}-${route.name}` : undefined,
+        props: route.props
+      }
+      localizedRoutes.push(localizedRoute)
+    })
+  })
+
+  // 添加404路由
+  localizedRoutes.push({
+    path: '/:pathMatch(.*)*',
+    redirect: () => `/${i18n.global.locale.value}`
+  })
+
+  return localizedRoutes
+}
+
 const router = createRouter({
   history: createWebHistory(),
-  routes,
-  scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) {
-      return savedPosition
-    } else {
-      return { top: 0 }
-    }
-  }
+  routes: generateLocalizedRoutes(baseRoutes)
 })
 
-// 添加站点地图路由处理
+// 全局前置守卫
 router.beforeEach(async (to, from, next) => {
-  // 手动更新站点地图的路由
-  if (to.path === '/update-sitemaps') {
-    try {
-      // 检查用户是否是管理员
-      const userStore = useUserStore()
-      if (!userStore.currentUser?.isAdmin) {
-        next('/404')
-        return
-      }
+  // 从路径中提取语言
+  const locale = to.path.split('/')[1]
+  
+  // 如果是支持的语言，设置为当前语言
+  if (supportedLocales.includes(locale)) {
+    i18n.global.locale.value = locale
+    localStorage.setItem('language', locale)
+  }
 
-      // 生成并更新站点地图
-      const mainSitemap = generateMainSitemap()
-      const worksSitemap = await generateWorksSitemap()
-      
-      // 保存主站点地图
-      const mainSitemapFile = new AV.File('sitemap.xml', { base64: btoa(mainSitemap) })
-      await mainSitemapFile.save()
-      
-      // 保存作品站点地图
-      const worksSitemapFile = new AV.File('works-sitemap.xml', { base64: btoa(worksSitemap) })
-      await worksSitemapFile.save()
-      
-      ElMessage.success('站点地图已更新')
-      next('/')
-      return
-    } catch (error) {
-      console.error('更新站点地图失败:', error)
-      ElMessage.error('更新站点地图失败')
-      next('/404')
-      return
-    }
-  }
-  
-  // 处理站点地图请求
-  if (to.path === '/sitemap.xml') {
-    try {
-      // 获取主站点地图
-      const query = new AV.Query('_File')
-      query.equalTo('name', 'sitemap.xml')
-      query.descending('createdAt')
-      const file = await query.first()
-      
-      if (!file) {
-        next('/404')
-        return
-      }
-      
-      window.location.href = file.get('url')
-      return
-    } catch (error) {
-      console.error('获取主站点地图失败:', error)
-      next('/404')
-      return
-    }
-  }
-  
-  if (to.path === '/works-sitemap.xml') {
-    try {
-      // 获取作品站点地图
-      const query = new AV.Query('_File')
-      query.equalTo('name', 'works-sitemap.xml')
-      query.descending('createdAt')
-      const file = await query.first()
-      
-      if (!file) {
-        next('/404')
-        return
-      }
-      
-      window.location.href = file.get('url')
-      return
-    } catch (error) {
-      console.error('获取作品站点地图失败:', error)
-      next('/404')
-      return
-    }
-  }
-  
-  // 用户认证检查
+  // 检查用户权限等
   const userStore = useUserStore()
   
-  // 等待用户状态初始化
+  // 等待用户状态初始化完成
   if (!userStore.initialized) {
-    await new Promise(resolve => {
-      const checkInitialized = () => {
-        if (userStore.initialized) {
-          resolve()
-        } else {
-          setTimeout(checkInitialized, 100)
-        }
-      }
-      checkInitialized()
-    })
+    await userStore.initializeUser()
   }
+  
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
+  const requiresVIP = to.matched.some(record => record.meta.requiresVIP)
 
-  const isLoggedIn = !!userStore.currentUser
-  const isVIP = userStore.currentUser?.isVIP || false
-
-  // 设置页面标题
-  document.title = to.meta.title || 'Photo Song'
-
-  // 需要登录的页面
-  if (to.meta.requiresAuth && !isLoggedIn) {
-    ElMessage.warning('请先登录')
-    next({
-      path: '/auth',
+  if (requiresAuth && !userStore.isAuthenticated) {
+    ElMessage.warning(t('auth.errors.loginRequired'))
+    next({ 
+      name: `${locale}-Auth`,
       query: { redirect: to.fullPath }
     })
     return
   }
 
-  // 需要会员的页面
-  if (to.meta.requiresVIP && !isVIP) {
-    ElMessage.warning('该功能需要会员权限')
-    next('/pricing')
+  if (requiresGuest && userStore.isAuthenticated) {
+    next({ name: `${locale}-Home` })
     return
   }
 
-  // 已登录用户不能访问游客页面
-  if (to.meta.requiresGuest && isLoggedIn) {
-    next('/')
+  if (requiresVIP && !userStore.isVIP) {
+    ElMessage.warning(t('auth.errors.vipRequired'))
+    next({ name: `${locale}-Pricing` })
     return
-  }
-
-  // 动态设置作品详情页的标题
-  if (to.name === 'WorkDetail' && to.params.work) {
-    to.meta.title = `${to.params.work.title} - Photo Song`
-    to.meta.description = to.params.work.description
-  }
-
-  // 动态设置用户主页的标题
-  if (to.name === 'Profile' && userStore.currentUser) {
-    to.meta.title = `${userStore.currentUser.username} 的主页 - Photo Song`
-    to.meta.description = `查看 ${userStore.currentUser.username} 在 Photo Song 上的创作作品`
   }
 
   next()
@@ -349,7 +288,10 @@ router.beforeEach(async (to, from, next) => {
 
 // 全局后置钩子
 router.afterEach((to, from) => {
-  // 这里可以添加页面访问统计等逻辑
+  // 更新页面标题和元数据
+  if (to.meta.title) {
+    document.title = to.meta.title
+  }
 })
 
 export default router  

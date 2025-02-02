@@ -1,11 +1,18 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { Message, Share, Link } from '@element-plus/icons-vue'
 
 const router = useRouter()
-const { t } = useI18n()
-const currentYear = new Date().getFullYear()
+const { t, locale } = useI18n()
+
+// 生成本地化的路由名称
+const getLocalizedRouteName = (baseName) => {
+  return `${locale.value}-${baseName}`
+}
+
+const currentYear = computed(() => new Date().getFullYear())
 
 // 友情链接数据
 const friendlyLinks = ref([
@@ -69,20 +76,20 @@ const friendlyLinks = ref([
         <div class="footer-section">
           <h4>{{ t('footer.quickLinks.title') }}</h4>
           <ul class="footer-links">
-            <li><a @click="router.push('/')">{{ t('footer.quickLinks.home') }}</a></li>
-            <li><a @click="router.push('/create')">{{ t('footer.quickLinks.create') }}</a></li>
-            <li><a @click="router.push('/community')">{{ t('footer.quickLinks.community') }}</a></li>
-            <li><a @click="router.push('/pricing')">{{ t('footer.quickLinks.pricing') }}</a></li>
+            <li><a @click="router.push({ name: getLocalizedRouteName('Home') })">{{ t('footer.quickLinks.home') }}</a></li>
+            <li><a @click="router.push({ name: getLocalizedRouteName('Create') })">{{ t('footer.quickLinks.create') }}</a></li>
+            <li><a @click="router.push({ name: getLocalizedRouteName('Community') })">{{ t('footer.quickLinks.community') }}</a></li>
+            <li><a @click="router.push({ name: getLocalizedRouteName('Pricing') })">{{ t('footer.quickLinks.pricing') }}</a></li>
           </ul>
         </div>
         
         <div class="footer-section">
           <h4>{{ t('footer.help.title') }}</h4>
           <ul class="footer-links">
-            <li><a @click="router.push('/tutorial')">{{ t('footer.help.tutorial') }}</a></li>
-            <li><a @click="router.push('/faq')">{{ t('footer.help.faq') }}</a></li>
-            <li><a @click="router.push('/contact')">{{ t('footer.help.contact') }}</a></li>
-            <li><a @click="router.push('/feedback')">{{ t('footer.help.feedback') }}</a></li>
+            <li><a @click="router.push({ name: getLocalizedRouteName('tutorial') })">{{ t('footer.help.tutorial') }}</a></li>
+            <li><a @click="router.push({ name: getLocalizedRouteName('faq') })">{{ t('footer.help.faq') }}</a></li>
+            <li><a @click="router.push({ name: getLocalizedRouteName('contact') })">{{ t('footer.help.contact') }}</a></li>
+            <li><a @click="router.push({ name: getLocalizedRouteName('feedback') })">{{ t('footer.help.feedback') }}</a></li>
           </ul>
         </div>
         
@@ -107,8 +114,8 @@ const friendlyLinks = ref([
           {{ t('footer.copyright', { year: currentYear }) }}
         </div>
         <div class="legal-links">
-          <a @click="router.push('/privacy')">{{ t('footer.links.privacy') }}</a>
-          <a @click="router.push('/terms')">{{ t('footer.links.terms') }}</a>
+          <a @click="router.push({ name: getLocalizedRouteName('privacy') })">{{ t('footer.links.privacy') }}</a>
+          <a @click="router.push({ name: getLocalizedRouteName('terms') })">{{ t('footer.links.terms') }}</a>
           <a @click="router.push('/disclaimer')">{{ t('footer.links.disclaimer') }}</a>
         </div>
       </div>

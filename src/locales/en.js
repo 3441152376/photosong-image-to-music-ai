@@ -233,6 +233,7 @@ export default {
   create: {
     title: 'AI Music Creation',
     subtitle: 'Upload a photo and let AI create your unique music',
+    description: 'Transform your photos into unique musical pieces with AI technology. Upload an image and our advanced AI will analyze its content, emotions, and style to create a personalized musical composition.',
     points: {
       label: 'Points',
       buy: 'Buy Points'
@@ -263,21 +264,54 @@ export default {
     },
     style: {
       title: 'Music Style',
+      descriptions: {
+        pop: 'Modern pop music style with catchy melodies and rhythms',
+        rock: 'Energetic rock style with powerful guitars and drums',
+        electronic: 'Modern electronic music with synthesizers and electronic beats',
+        jazz: 'Elegant jazz style with improvisation and sophisticated harmonies',
+        classical: 'Elegant classical style with graceful orchestral arrangements',
+        folk: 'Warm folk style with sincere lyrics and acoustic instruments',
+        rnb: 'Soulful rhythm and blues with sensual vocals and groove',
+        hiphop: 'Rhythmic hip-hop style with expressive rap',
+        ambient: 'Ethereal ambient music creating an immersive experience',
+        edm: 'Energetic electronic dance music with powerful rhythms and drops',
+        metal: 'Heavy metal music with distorted guitars and double bass',
+        indie: 'Independent music style with unique creative expression',
+        soul: 'Infectious soul music with emotional performance',
+        blues: 'Traditional blues music with deep emotional expression',
+        funk: 'Rhythmic funk music emphasizing bass and groove'
+      },
+      tags: {
+        pop: ['modern', 'melodic', 'catchy'],
+        rock: ['electric guitar', 'drums', 'energetic'],
+        electronic: ['synth', 'edm', 'dance'],
+        jazz: ['smooth', 'improvisation', 'sophisticated'],
+        classical: ['orchestral', 'elegant', 'instrumental'],
+        folk: ['acoustic', 'storytelling', 'warm'],
+        rnb: ['soul', 'groove', 'emotional'],
+        hiphop: ['rap', 'beats', 'rhythmic'],
+        ambient: ['atmospheric', 'peaceful', 'ethereal'],
+        edm: ['dance', 'energetic', 'party'],
+        metal: ['heavy', 'distortion', 'intense'],
+        indie: ['alternative', 'unique', 'creative'],
+        soul: ['emotional', 'powerful', 'expressive'],
+        blues: ['emotional', 'traditional', 'soulful'],
+        funk: ['groovy', 'rhythmic', 'bass']
+      },
       pop: 'Pop',
       rock: 'Rock',
       electronic: 'Electronic',
-      classical: 'Classical',
       jazz: 'Jazz',
+      classical: 'Classical',
       folk: 'Folk',
-      hiphop: 'Hip Hop',
       rnb: 'R&B',
-      country: 'Country',
-      blues: 'Blues',
+      hiphop: 'Hip-hop',
       ambient: 'Ambient',
       edm: 'EDM',
       metal: 'Metal',
       indie: 'Indie',
       soul: 'Soul',
+      blues: 'Blues',
       funk: 'Funk'
     },
     language: {
@@ -287,9 +321,16 @@ export default {
       singleDesc: 'Use only selected language',
       mixedDesc: 'Mix multiple languages in lyrics',
       options: {
-        zh: 'Chinese',
-        en: 'English',
-        mixed: 'Chinese & English'
+        chinese: 'Chinese',
+        english: 'English',
+        japanese: 'Japanese',
+        korean: 'Korean',
+        french: 'French',
+        spanish: 'Spanish',
+        german: 'German',
+        italian: 'Italian',
+        russian: 'Russian',
+        instrumental: 'Instrumental'
       }
     },
     length: {
@@ -305,6 +346,20 @@ export default {
       long: {
         label: 'Long',
         description: '3-4 verses, for complex stories'
+      },
+      options: {
+        short: {
+          label: 'Short',
+          description: '1-2 verses, for simple expression'
+        },
+        medium: {
+          label: 'Medium',
+          description: '2-3 verses, standard pop song length'
+        },
+        long: {
+          label: 'Long',
+          description: '3-4 verses, for complex stories'
+        }
       }
     },
     lyrics: {
@@ -394,76 +449,69 @@ export default {
     }
   },
   pricing: {
-    title: 'Membership Benefits',
-    subtitle: 'Unlock Unlimited Possibilities of AI Music Creation',
+    title: 'Choose Your Plan',
+    subtitle: 'Transform Your Photos into Music',
+    description: 'Select the perfect plan that suits your creative needs',
+    loginPrompt: {
+      title: 'Sign in to Subscribe',
+      description: 'Please sign in or create an account to purchase a subscription or points.',
+      button: 'Sign In'
+    },
+    basic: {
+      title: 'Basic',
+      description: 'Perfect for individual creators getting started'
+    },
+    pro: {
+      title: 'Professional',
+      description: 'Comprehensive solution for professional creators'
+    },
     plans: {
       period: {
         month: 'month',
         year: 'year',
         lifetime: 'lifetime'
       },
-      button: 'Subscribe Now',
+      button: 'Coming Soon',
       starter: {
-        name: 'Starter Plan',
+        name: 'Starter',
         features: {
-          monthlyPoints: '2000 points per month',
-          unlimitedCreation: 'Unlimited Creation',
-          commercialLicense: 'Commercial License',
-          priorityQueue: 'Priority Queue'
+          monthlyPoints: '2000 points monthly',
+          unlimitedCreation: 'Unlimited creation',
+          commercialLicense: 'Commercial license',
+          priorityQueue: 'Priority queue'
         }
       },
       advanced: {
-        name: 'Advanced Plan',
+        name: 'Advanced',
         features: {
-          monthlyPoints: '6000 points per month',
-          unlimitedCreation: 'Unlimited Creation',
-          commercialLicense: 'Commercial License',
-          priorityQueue: 'Priority Queue',
-          support: 'Dedicated Support'
+          monthlyPoints: '6000 points monthly',
+          unlimitedCreation: 'Unlimited creation',
+          commercialLicense: 'Commercial license',
+          priorityQueue: 'Priority queue',
+          support: 'Dedicated support'
         }
       },
       pro: {
-        name: 'Professional Plan',
+        name: 'Professional',
         features: {
-          yearlyPoints: '40000 points per year',
-          unlimitedCreation: 'Unlimited Creation',
-          commercialLicense: 'Commercial License',
-          highestPriority: 'Highest Priority',
-          support: 'Dedicated Support',
-          customService: 'Customization Service'
+          yearlyPoints: '40000 points yearly',
+          unlimitedCreation: 'Unlimited creation',
+          commercialLicense: 'Commercial license',
+          highestPriority: 'Highest priority',
+          support: 'Dedicated support',
+          customService: 'Custom service'
         }
       },
       lifetime: {
-        name: 'Lifetime Plan',
+        name: 'Lifetime',
         features: {
           lifetimePoints: '160000 points bonus',
-          unlimitedCreation: 'Unlimited Creation',
-          commercialLicense: 'Commercial License',
-          highestPriority: 'Highest Priority',
-          support: 'Dedicated Support',
-          customService: 'Customization Service',
-          lifetime: 'Lifetime Access'
-        }
-      }
-    },
-    points: {
-      title: 'Buy Points',
-      unit: 'points',
-      rate: '1 USD = 400 points',
-      packages: {
-        recommended: 'Recommended',
-        buyNow: 'Buy Now',
-        0: {
-          name: 'Small Package',
-          description: 'Experience creation'
-        },
-        1: {
-          name: 'Value Package',
-          description: 'Unleash creativity'
-        },
-        2: {
-          name: 'Premium Package',
-          description: 'Unlimited possibilities'
+          unlimitedCreation: 'Unlimited creation',
+          commercialLicense: 'Commercial license',
+          highestPriority: 'Highest priority',
+          support: 'Dedicated support',
+          customService: 'Custom service',
+          lifetime: 'Lifetime access'
         }
       }
     },
@@ -474,27 +522,75 @@ export default {
         features: {
           advanced: {
             title: 'Advanced AI Features',
-            description: 'Access to advanced AI music generation features',
-            details: [
-              'Multiple music styles and genres',
-              'Advanced style control',
-              'High-quality audio output',
-              'Extended music duration'
-            ]
+            description: 'Unlock advanced AI music generation capabilities',
+            details: 'Multiple music styles and genres\nAdvanced style control\nHigh-quality audio output\nExtended music duration\nCustom music parameters\nBatch generation'
           },
           templates: {
-            title: 'Templates',
-            details: 'Access to premium music generation templates and presets'
+            title: 'Professional Templates',
+            description: 'Access professional music templates',
+            details: 'Preset music templates\nIndustry-standard arrangements\nQuick scene startup\nRegular template updates\nCustom template saving\nTemplate sharing'
           },
           copyright: {
-            title: 'Copyright',
-            details: 'Full commercial usage rights for generated music'
+            title: 'Copyright Protection',
+            description: 'Complete ownership of generated music',
+            details: 'Full commercial rights\nCopyright certificate\nLegal documentation\nUsage tracking tools\nCopyright registration\nInfringement monitoring'
           },
           priority: {
-            title: 'Priority Processing',
-            details: 'Priority queue for music generation requests'
+            title: 'Priority Service',
+            description: 'Enjoy priority processing and support',
+            details: 'Priority generation queue\n24/7 customer support\nFaster processing speed\nExclusive member events\nVIP support line\nCustomized service'
           }
         }
+      }
+    },
+    points: {
+      title: 'Purchase Points',
+      unit: 'points',
+      rate: '1 USD = 400 points',
+      packages: {
+        recommended: 'Recommended',
+        buyNow: 'Buy Now',
+        0: {
+          name: 'Small Package',
+          description: 'Experience creation fun'
+        },
+        1: {
+          name: 'Value Package',
+          description: 'Unlimited inspiration'
+        },
+        2: {
+          name: 'Premium Package',
+          description: 'Unlimited possibilities'
+        }
+      }
+    },
+    errors: {
+      checkoutFailed: 'Payment initialization failed, please try again later'
+    },
+    comingSoon: {
+      payment: 'Payment feature coming soon',
+      points: 'Points purchase coming soon'
+    },
+    payment: {
+      error: {
+        checkout: 'Failed to create checkout session, please try again',
+        noSession: 'Invalid payment session',
+      },
+      status: {
+        checking: 'Checking Payment Status',
+        wait: 'Please wait while we process your order...',
+        error: 'Failed to confirm payment status',
+        processing: 'Payment Processing',
+        processingMessage: 'Your payment is being processed, please wait...',
+        failed: 'Payment Failed',
+        failedMessage: 'Sorry, the payment could not be completed. Please try again',
+        retry: 'Retry Payment',
+        tryAgain: 'Try Again'
+      },
+      success: {
+        title: 'Payment Successful',
+        message: 'Thank you for your purchase! Your order has been confirmed',
+        continue: 'Continue'
       }
     }
   },
@@ -799,7 +895,12 @@ export default {
     buy: 'Buy Points',
     label: 'Points',
     perUSD: '1 USD = {points} points',
-    description: 'Creating a song requires 100 points'
+    description: 'Creating a song requires 100 points',
+    success: {
+      deducted: '{points} points deducted',
+      refunded: '{points} points refunded',
+      purchased: '{points} points purchased'
+    }
   },
   notice: {
     title: 'Creation Tips',
@@ -1219,5 +1320,16 @@ export default {
       contact: 'Contact Us',
       terms: 'Terms of Service'
     }
+  },
+  success: {
+    upload: 'Upload successful',
+    save: 'Save successful',
+    update: 'Update successful',
+    delete: 'Delete successful',
+    share: 'Share successful',
+    copy: 'Copy successful',
+    download: 'Download successful',
+    generate: 'Generation successful',
+    publish: 'Publish successful'
   }
 } 

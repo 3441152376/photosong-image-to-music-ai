@@ -48,107 +48,62 @@ const pointsDeducted = ref(false)
 const styles = [
   {
     value: 'pop',
-    label: '流行 Pop',
-    description: '现代流行音乐风格，富有感染力的旋律和节奏',
-    tags: 'pop, modern, melodic, catchy',
     icon: 'Headset'
   },
   {
     value: 'rock',
-    label: '摇滚 Rock',
-    description: '充满能量的摇滚风格，强劲的吉他和鼓点',
-    tags: 'rock, electric guitar, drums, energetic',
     icon: 'Lightning'
   },
   {
     value: 'electronic',
-    label: '电子 Electronic',
-    description: '现代电子音乐，包含合成器和电子节拍',
-    tags: 'electronic, synth, edm, dance',
     icon: 'Monitor'
   },
   {
     value: 'jazz',
-    label: '爵士 Jazz',
-    description: '优雅的爵士风格，即兴演奏和复杂和声',
-    tags: 'jazz, smooth, improvisation, sophisticated',
     icon: 'Mic'
   },
   {
     value: 'classical',
-    label: '古典 Classical',
-    description: '优美的古典音乐风格，优雅的管弦乐编排',
-    tags: 'classical, orchestral, elegant, instrumental',
     icon: 'Music'
   },
   {
     value: 'folk',
-    label: '民谣 Folk',
-    description: '温暖的民谣风格，真挚的歌词和原声乐器',
-    tags: 'folk, acoustic, storytelling, warm',
     icon: 'Guitar'
   },
   {
     value: 'rnb',
-    label: 'R&B',
-    description: '富有灵魂的节奏布鲁斯，感性的声线和律动',
-    tags: 'rnb, soul, groove, emotional',
     icon: 'Microphone'
   },
   {
     value: 'hiphop',
-    label: '嘻哈 Hip-Hop',
-    description: '节奏感强的嘻哈风格，富有韵律的说唱',
-    tags: 'hiphop, rap, beats, rhythmic',
     icon: 'Mic'
   },
   {
     value: 'ambient',
-    label: '氛围 Ambient',
-    description: '空灵的氛围音乐，营造沉浸式体验',
-    tags: 'ambient, atmospheric, peaceful, ethereal',
     icon: 'Cloudy'
   },
   {
     value: 'edm',
-    label: '电子舞曲 EDM',
-    description: '充满活力的电子舞曲，强劲的节奏和drop',
-    tags: 'edm, dance, energetic, party',
     icon: 'Lightning'
   },
   {
     value: 'metal',
-    label: '金属 Metal',
-    description: '重型金属音乐，强劲的失真吉他和双踩',
-    tags: 'metal, heavy, distortion, intense',
     icon: 'Lightning'
   },
   {
     value: 'indie',
-    label: '独立 Indie',
-    description: '独立音乐风格，独特的创作理念和表达',
-    tags: 'indie, alternative, unique, creative',
     icon: 'Star'
   },
   {
     value: 'soul',
-    label: '灵魂 Soul',
-    description: '充满感染力的灵魂乐，深情的演绎',
-    tags: 'soul, emotional, powerful, expressive',
     icon: 'Mic'
   },
   {
     value: 'blues',
-    label: '蓝调 Blues',
-    description: '传统蓝调音乐，深沉的情感表达',
-    tags: 'blues, emotional, traditional, soulful',
     icon: 'Guitar'
   },
   {
     value: 'funk',
-    label: '放克 Funk',
-    description: '富有节奏感的放克音乐，强调bass和律动',
-    tags: 'funk, groovy, rhythmic, bass',
     icon: 'Headset'
   }
 ]
@@ -225,20 +180,20 @@ const mixMode = ref('single')
 const lengthOptions = [
   {
     value: 'short',
-    label: '简短',
-    description: '1-2节，适合简单表达',
+    label: t('create.length.options.short.label'),
+    description: t('create.length.options.short.description'),
     icon: 'Crop'
   },
   {
     value: 'medium',
-    label: '中等',
-    description: '2-3节，标准流行歌曲长度',
+    label: t('create.length.options.medium.label'),
+    description: t('create.length.options.medium.description'),
     icon: 'Document'
   },
   {
     value: 'long',
-    label: '较长',
-    description: '3-4节，适合复杂故事',
+    label: t('create.length.options.long.label'),
+    description: t('create.length.options.long.description'),
     icon: 'DocumentAdd'
   }
 ]
@@ -314,7 +269,7 @@ const handleImageUpload = async (file) => {
       await updateUserPoints(-POINTS_CONFIG.CREATE_MUSIC, '创建音乐')
       userPoints.value = await getUserPoints()
       pointsDeducted.value = true
-      ElMessage.success(`已扣除 ${POINTS_CONFIG.CREATE_MUSIC} 积分`)
+      ElMessage.success(t('points.success.deducted', { points: POINTS_CONFIG.CREATE_MUSIC }))
     }
 
     // 上传图片到 LeanCloud
@@ -322,7 +277,7 @@ const handleImageUpload = async (file) => {
     const reader = new FileReader()
     
     reader.onload = async (e) => {
-      data.base64 = e.target.result
+      data.base64 = e.target.result.split(',')[1]
       
       try {
         const file = new AV.File('image.jpg', { base64: data.base64 })
@@ -419,31 +374,35 @@ async function pollMusicTask() {
   }
 }
 
-const initAudioContext = () => {
+const initAudioContext = async () => {
   try {
+    // 只在用户交互时创建 AudioContext
     if (!audioContext.value) {
       audioContext.value = new (window.AudioContext || window.webkitAudioContext)()
     }
+    
+    // 如果 AudioContext 被挂起，则恢复它
     if (audioContext.value.state === 'suspended') {
-      audioContext.value.resume()
+      await audioContext.value.resume()
     }
+    
     return true
   } catch (error) {
     console.error('Failed to initialize AudioContext:', error)
-    ElMessage.error(t('errors.audioInit'))
     return false
   }
 }
 
-const handleUserInteraction = () => {
+// 在用户交互时初始化音频
+const handleUserInteraction = async () => {
   if (!isAudioInitialized.value) {
-    isAudioInitialized.value = initAudioContext()
+    isAudioInitialized.value = await initAudioContext()
   }
 }
 
 const handlePlay = async () => {
   if (!isAudioInitialized.value) {
-    isAudioInitialized.value = initAudioContext()
+    isAudioInitialized.value = await initAudioContext()
   }
   if (!isAudioInitialized.value) return
   
@@ -700,7 +659,7 @@ const optimizeLyrics = async () => {
 // 修改 handleCreate 函数
 const handleCreate = async () => {
   if (!imageUrl.value || !selectedStyle.value || !title.value || !lyrics.value) {
-    ElMessage.warning('请填写完整信息')
+    ElMessage.warning(t('create.errors.incomplete'))
     return
   }
   
@@ -757,7 +716,7 @@ const handleCreate = async () => {
     console.log('Suno API response:', sunoData)
     
     if (!sunoData.data) {
-      throw new Error('音乐生成失败：服务器返回数据格式错误')
+      throw new Error(t('create.errors.serverError'))
     }
     
     // 创建新的作品记录
@@ -790,7 +749,7 @@ const handleCreate = async () => {
     }, 10000)
     
     ElMessage.success({
-      message: '已提交生成请求，正在跳转到个人作品页面查看进度...',
+      message: t('create.success.submitted'),
       duration: 2000
     })
     
@@ -807,13 +766,11 @@ const handleCreate = async () => {
   } catch (error) {
     console.error('Creation failed:', error)
     
-    let errorMessage = '创作失败，请重试'
+    let errorMessage = t('create.errors.generation')
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
-      errorMessage = '网络请求失败，请检查网络连接'
+      errorMessage = t('create.errors.networkError')
     } else if (error instanceof Error) {
       errorMessage = error.message
-    } else if (typeof error === 'string') {
-      errorMessage = error
     }
     
     ElMessage.error({
@@ -958,16 +915,16 @@ const styleOptions = [
 
 // 语言选项
 const languageOptions = [
-  { value: 'chinese', label: '中文' },
-  { value: 'english', label: '英语' },
-  { value: 'japanese', label: '日语' },
-  { value: 'korean', label: '韩语' },
-  { value: 'french', label: '法语' },
-  { value: 'spanish', label: '西班牙语' },
-  { value: 'german', label: '德语' },
-  { value: 'italian', label: '意大利语' },
-  { value: 'russian', label: '俄语' },
-  { value: 'instrumental', label: '纯音乐' }
+  { value: 'chinese', label: t('create.language.options.chinese') },
+  { value: 'english', label: t('create.language.options.english') },
+  { value: 'japanese', label: t('create.language.options.japanese') },
+  { value: 'korean', label: t('create.language.options.korean') },
+  { value: 'french', label: t('create.language.options.french') },
+  { value: 'spanish', label: t('create.language.options.spanish') },
+  { value: 'german', label: t('create.language.options.german') },
+  { value: 'italian', label: t('create.language.options.italian') },
+  { value: 'russian', label: t('create.language.options.russian') },
+  { value: 'instrumental', label: t('create.language.options.instrumental') }
 ]
 
 // 表单数据
@@ -1137,21 +1094,19 @@ const selectedRelevance = ref('medium')
                     :class="{ active: selectedStyle === style.value }"
                     @click="selectedStyle = style.value"
                   >
-                    <el-icon class="style-icon">
+                    <div class="style-icon">
                       <component :is="style.icon" />
-                    </el-icon>
+                    </div>
                     <div class="style-info">
-                      <h4>{{ t(`create.style.${style.value}`) }}</h4>
-                      <p>{{ style.description }}</p>
+                      <h3>{{ t(`create.style.${style.value}`) }}</h3>
+                      <p class="style-description">{{ t(`create.style.descriptions.${style.value}`) }}</p>
                       <div class="style-tags">
-                        <el-tag 
-                          v-for="tag in style.tags.split(', ')" 
-                          :key="tag"
-                          size="small"
-                          class="tag"
+                        <span v-for="(tag, index) in (Array.isArray(t(`create.style.tags.${style.value}`)) ? t(`create.style.tags.${style.value}`) : [])" 
+                              :key="index" 
+                              class="tag"
                         >
                           {{ tag }}
-                        </el-tag>
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1237,8 +1192,8 @@ const selectedRelevance = ref('medium')
                       <component :is="option.icon" />
                     </el-icon>
                     <div class="length-info">
-                      <span class="length-label">{{ t(`create.length.${option.value}.label`) }}</span>
-                      <span class="length-desc">{{ t(`create.length.${option.value}.description`) }}</span>
+                      <span class="length-label">{{ t(`create.length.options.${option.value}.label`) }}</span>
+                      <span class="length-desc">{{ t(`create.length.options.${option.value}.description`) }}</span>
                     </div>
                   </div>
                 </div>
@@ -1545,6 +1500,16 @@ const selectedRelevance = ref('medium')
       border: none;
       color: var(--text-color);
       font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        background: rgba(var(--primary-color-rgb), 0.2);
+        transform: translateY(-1px);
+      }
     }
   }
   
@@ -1631,6 +1596,16 @@ const selectedRelevance = ref('medium')
         border: none;
         color: var(--text-color);
         font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        display: inline-flex;
+        align-items: center;
+        transition: all 0.3s ease;
+        
+        &:hover {
+          background: rgba(var(--primary-color-rgb), 0.2);
+          transform: translateY(-1px);
+        }
       }
     }
   }
@@ -1652,6 +1627,10 @@ const selectedRelevance = ref('medium')
       rgba(var(--primary-color-rgb), 0.1),
       rgba(var(--accent-color-rgb), 0.1)
     );
+    
+    .language-icon {
+      color: var(--accent-color);
+    }
   }
 }
 
@@ -1666,7 +1645,7 @@ const selectedRelevance = ref('medium')
     
     &:hover {
       border-color: var(--primary-color);
-      box-shadow: 0 0 0 1px var(--primary-color-10);
+      box-shadow: 0 0 0 1px var(--primary-color);
     }
     
     &.is-focus {
@@ -1996,6 +1975,16 @@ const selectedRelevance = ref('medium')
         border: none;
         color: var(--text-color);
         font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        display: inline-flex;
+        align-items: center;
+        transition: all 0.3s ease;
+        
+        &:hover {
+          background: rgba(var(--primary-color-rgb), 0.2);
+          transform: translateY(-1px);
+        }
       }
     }
   }

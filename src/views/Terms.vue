@@ -1,9 +1,16 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import TheNavbar from '../components/TheNavbar.vue'
 import TheFooter from '../components/TheFooter.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const router = useRouter()
+
+// 生成本地化的路由名称
+const getLocalizedRouteName = (baseName) => {
+  return `${locale.value}-${baseName}`
+}
 
 const sections = [
   {
@@ -98,10 +105,10 @@ const sections = [
       <div class="terms-footer">
         <p>{{ t('terms.footer.questions') }}</p>
         <div class="footer-actions">
-          <router-link to="/contact" class="footer-link">
+          <router-link :to="{ name: getLocalizedRouteName('contact') }" class="footer-link">
             {{ t('terms.footer.contact') }}
           </router-link>
-          <router-link to="/privacy" class="footer-link">
+          <router-link :to="{ name: getLocalizedRouteName('privacy') }" class="footer-link">
             {{ t('terms.footer.privacy') }}
           </router-link>
         </div>

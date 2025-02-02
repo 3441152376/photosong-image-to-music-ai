@@ -1,4 +1,5 @@
 import AV from 'leancloud-storage'
+import { supportedLocales } from '../i18n'
 
 /**
  * 生成作品站点地图
@@ -6,74 +7,44 @@ import AV from 'leancloud-storage'
  */
 export const generateWorksSitemap = async () => {
   try {
-    // 查询所有公开的作品
     const query = new AV.Query('Work')
-    query.equalTo('isPublic', true)
-    query.descending('updatedAt')
-    query.limit(1000) // 限制最多 1000 个作品
-    
+    query.equalTo('status', 'completed')
+    query.descending('createdAt')
+    query.limit(2000) // 增加收录数量限制
+
     const works = await query.find()
-    
-    // 生成站点地图头部
-    let sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    sitemap += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
-    sitemap += '        xmlns:xhtml="http://www.w3.org/1999/xhtml"\n'
-    sitemap += '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"\n'
-    sitemap += '        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n'
-    
-    // 为每个作品生成 URL 条目
+    const urls = []
+
     works.forEach(work => {
-      const workData = work.toJSON()
-      sitemap += '  <url>\n'
-      sitemap += `    <loc>https://photosong.com/work/${workData.objectId}</loc>\n`
-      sitemap += `    <lastmod>${workData.updatedAt.toISOString()}</lastmod>\n`
-      sitemap += '    <changefreq>weekly</changefreq>\n'
-      sitemap += '    <priority>0.8</priority>\n'
+      const path = `/work/${work.id}`
+      const lastmod = work.updatedAt.toISOString()
       
-      // 添加多语言支持
-      sitemap += '    <xhtml:link rel="alternate" hreflang="en" '
-      sitemap += `href="https://photosong.com/en/work/${workData.objectId}"/>\n`
-      sitemap += '    <xhtml:link rel="alternate" hreflang="zh" '
-      sitemap += `href="https://photosong.com/zh/work/${workData.objectId}"/>\n`
-      sitemap += '    <xhtml:link rel="alternate" hreflang="ru" '
-      sitemap += `href="https://photosong.com/ru/work/${workData.objectId}"/>\n`
-      
-      // 添加图片信息
-      if (workData.imageUrl) {
-        sitemap += '    <image:image>\n'
-        sitemap += `      <image:loc>${workData.imageUrl}</image:loc>\n`
-        sitemap += `      <image:title>${workData.title || 'Photo Music Creation'}</image:title>\n`
-        sitemap += '      <image:caption>AI generated music from photo</image:caption>\n'
-        sitemap += `      <image:geo_location>${workData.location || 'Global'}</image:geo_location>\n`
-        sitemap += '      <image:license>https://photosong.com/license</image:license>\n'
-        sitemap += '    </image:image>\n'
-      }
-      
-      // 添加预览视频信息（如果有）
-      if (workData.previewVideoUrl) {
-        sitemap += '    <video:video>\n'
-        sitemap += `      <video:thumbnail_loc>${workData.imageUrl}</video:thumbnail_loc>\n`
-        sitemap += `      <video:title>${workData.title || 'Photo Music Creation'}</video:title>\n`
-        sitemap += '      <video:description>AI generated music visualization from photo</video:description>\n'
-        sitemap += '      <video:content_loc>' + workData.previewVideoUrl + '</video:content_loc>\n'
-        sitemap += '      <video:player_loc>' + 
-                   `https://photosong.com/embed/work/${workData.objectId}` + 
-                   '</video:player_loc>\n'
-        sitemap += '      <video:duration>120</video:duration>\n'
-        sitemap += '      <video:family_friendly>yes</video:family_friendly>\n'
-        sitemap += `      <video:publication_date>${workData.createdAt}</video:publication_date>\n`
-        sitemap += '      <video:uploader info="https://photosong.com/users/' + 
-                   `${workData.creator.objectId}">${workData.creator.username}</video:uploader>\n`
-        sitemap += '    </video:video>\n'
-      }
-      
-      sitemap += '  </url>\n'
+      // 为每个语言版本生成 URL
+      supportedLocales.forEach(locale => {
+        urls.push({
+          loc: `https://photosong.com/${locale}${path}`,
+          lastmod,
+          changefreq: 'weekly',
+          priority: 0.7,
+          alternates: [
+            // 添加 x-default
+            {
+              hreflang: 'x-default',
+              href: `https://photosong.com${path}`
+            },
+            // 添加所有语言版本
+            ...supportedLocales.map(altLocale => ({
+              hreflang: altLocale,
+              href: `https://photosong.com/${altLocale}${path}`
+            }))
+          ]
+        })
+      })
     })
-    
-    sitemap += '</urlset>'
-    return sitemap
+
+    return generateSitemapXML(urls)
   } catch (error) {
-    console.error('生成作品站点地图时出错:', error)
+    console.error('Failed to generate works sitemap:', error)
     throw error
   }
 }
@@ -136,31 +107,23 @@ export const generateNewsSitemap = async () => {
  * @returns {string} XML 格式的站点地图索引
  */
 export const generateSitemapIndex = () => {
-  const now = new Date().toISOString()
-  
-  let sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n'
-  sitemap += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-  
-  // 主站点地图
-  sitemap += '  <sitemap>\n'
-  sitemap += '    <loc>https://photosong.com/main-sitemap.xml</loc>\n'
-  sitemap += `    <lastmod>${now}</lastmod>\n`
-  sitemap += '  </sitemap>\n'
-  
-  // 作品站点地图
-  sitemap += '  <sitemap>\n'
-  sitemap += '    <loc>https://photosong.com/works-sitemap.xml</loc>\n'
-  sitemap += `    <lastmod>${now}</lastmod>\n`
-  sitemap += '  </sitemap>\n'
-  
-  // 新闻站点地图
-  sitemap += '  <sitemap>\n'
-  sitemap += '    <loc>https://photosong.com/news-sitemap.xml</loc>\n'
-  sitemap += `    <lastmod>${now}</lastmod>\n`
-  sitemap += '  </sitemap>\n'
-  
-  sitemap += '</sitemapindex>'
-  return sitemap
+  const sitemaps = [
+    'https://photosong.com/sitemap-main.xml',
+    'https://photosong.com/sitemap-works.xml'
+  ]
+
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+  xml += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+
+  sitemaps.forEach(url => {
+    xml += '  <sitemap>\n'
+    xml += `    <loc>${url}</loc>\n`
+    xml += `    <lastmod>${new Date().toISOString()}</lastmod>\n`
+    xml += '  </sitemap>\n'
+  })
+
+  xml += '</sitemapindex>'
+  return xml
 }
 
 /**
@@ -197,86 +160,102 @@ export const updateAllSitemaps = async () => {
  * @returns {string} XML 格式的站点地图
  */
 export const generateMainSitemap = () => {
-  const languages = ['en', 'zh', 'ru']
-  const pages = [
-    { 
-      url: '/',
-      priority: '1.0',
-      changefreq: 'daily',
-      translations: {
-        en: 'Photo Song - Turn Photos into Music | AI Photo Music Generator',
-        zh: 'Photo Song - 照片转音乐 | AI 照片音乐生成器',
-        ru: 'Photo Song - Превращайте фотографии в музыку | AI генератор музыки из фото'
-      }
-    },
-    { 
-      url: '/community',
-      priority: '0.9',
-      changefreq: 'hourly',
-      translations: {
-        en: 'Community - Share Your Photo Music Creations',
-        zh: '社区 - 分享您的照片音乐作品',
-        ru: 'Сообщество - Поделитесь своими музыкальными творениями'
-      }
-    },
-    { 
-      url: '/pricing',
-      priority: '0.8',
-      changefreq: 'weekly',
-      translations: {
-        en: 'Pricing - Photo Music Generator Plans',
-        zh: '定价 - 照片音乐生成器套餐',
-        ru: 'Цены - Планы генератора музыки из фото'
-      }
-    },
-    {
-      url: '/features',
-      priority: '0.8',
-      changefreq: 'weekly',
-      translations: {
-        en: 'Features - AI Photo to Music Conversion',
-        zh: '功能 - AI 照片转音乐转换',
-        ru: 'Функции - AI конвертация фото в музыку'
-      }
-    },
-    {
-      url: '/how-it-works',
-      priority: '0.8',
-      changefreq: 'monthly',
-      translations: {
-        en: 'How It Works - Convert Photos to Music',
-        zh: '工作原理 - 将照片转换为音乐',
-        ru: 'Как это работает - Конвертация фото в музыку'
-      }
-    }
+  const staticPaths = [
+    { path: '/', priority: 1.0, changefreq: 'daily' },
+    { path: '/create', priority: 0.9, changefreq: 'daily' },
+    { path: '/community', priority: 0.9, changefreq: 'daily' },
+    { path: '/pricing', priority: 0.8, changefreq: 'weekly' },
+    { path: '/tutorial', priority: 0.7, changefreq: 'weekly' },
+    { path: '/faq', priority: 0.7, changefreq: 'weekly' },
+    { path: '/contact', priority: 0.6, changefreq: 'monthly' },
+    { path: '/terms', priority: 0.5, changefreq: 'monthly' },
+    { path: '/privacy', priority: 0.5, changefreq: 'monthly' },
+    { path: '/blog', priority: 0.8, changefreq: 'daily' },
+    { path: '/features', priority: 0.8, changefreq: 'weekly' },
+    { path: '/about', priority: 0.7, changefreq: 'monthly' }
   ]
+
+  const urls = []
+  staticPaths.forEach(({ path, priority, changefreq }) => {
+    urls.push(...generateMultilingualUrls(path, priority, changefreq))
+  })
+
+  return generateSitemapXML(urls)
+}
+
+const generateMultilingualUrls = (path, priority = 0.8, changefreq = 'daily') => {
+  const urls = []
   
-  let sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n'
-  sitemap += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
-  sitemap += '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
-  
-  pages.forEach(page => {
-    languages.forEach(lang => {
-      sitemap += '  <url>\n'
-      sitemap += `    <loc>https://photosong.com/${lang}${page.url}</loc>\n`
-      sitemap += `    <lastmod>${new Date().toISOString()}</lastmod>\n`
-      sitemap += `    <changefreq>${page.changefreq}</changefreq>\n`
-      sitemap += `    <priority>${page.priority}</priority>\n`
-      
-      // Add hreflang tags for all language versions
-      languages.forEach(altLang => {
-        sitemap += '    <xhtml:link rel="alternate" hreflang="' + altLang + '" '
-        sitemap += `href="https://photosong.com/${altLang}${page.url}"/>\n`
-      })
-      
-      // Add x-default hreflang
-      sitemap += '    <xhtml:link rel="alternate" hreflang="x-default" '
-      sitemap += `href="https://photosong.com${page.url}"/>\n`
-      
-      sitemap += '  </url>\n'
+  // 添加 x-default 版本
+  urls.push({
+    loc: `https://photosong.com${path}`,
+    lastmod: new Date().toISOString(),
+    changefreq,
+    priority,
+    alternates: [
+      {
+        hreflang: 'x-default',
+        href: `https://photosong.com${path}`
+      },
+      ...supportedLocales.map(locale => ({
+        hreflang: locale,
+        href: `https://photosong.com/${locale}${path}`
+      }))
+    ]
+  })
+
+  // 添加各语言版本
+  supportedLocales.forEach(locale => {
+    urls.push({
+      loc: `https://photosong.com/${locale}${path}`,
+      lastmod: new Date().toISOString(),
+      changefreq,
+      priority,
+      alternates: [
+        {
+          hreflang: 'x-default',
+          href: `https://photosong.com${path}`
+        },
+        ...supportedLocales.map(altLocale => ({
+          hreflang: altLocale,
+          href: `https://photosong.com/${altLocale}${path}`
+        }))
+      ]
     })
   })
-  
-  sitemap += '</urlset>'
-  return sitemap
+
+  return urls
+}
+
+// 生成 XML
+const generateSitemapXML = (urls) => {
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+  xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
+  xml += '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+
+  urls.forEach(url => {
+    xml += '  <url>\n'
+    xml += `    <loc>${url.loc}</loc>\n`
+    xml += `    <lastmod>${url.lastmod}</lastmod>\n`
+    xml += `    <changefreq>${url.changefreq}</changefreq>\n`
+    xml += `    <priority>${url.priority}</priority>\n`
+    
+    // 添加多语言替代链接
+    if (url.alternates) {
+      url.alternates.forEach(alt => {
+        xml += `    <xhtml:link rel="alternate" hreflang="${alt.hreflang}" href="${alt.href}" />\n`
+      })
+    }
+    
+    xml += '  </url>\n'
+  })
+
+  xml += '</urlset>'
+  return xml
+}
+
+export default {
+  generateMainSitemap,
+  generateWorksSitemap,
+  generateSitemapIndex
 } 

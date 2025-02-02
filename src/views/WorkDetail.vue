@@ -7,10 +7,12 @@ import { useResponsive } from '../composables/useResponsive'
 import { ElMessage } from 'element-plus'
 import AV from 'leancloud-storage'
 import { Microphone, Mute, CaretRight, VideoPause, Share, Download, Warning, Calendar, VideoPlay } from '@element-plus/icons-vue'
+import { useHead } from '@unhead/vue'
+import SeoMeta from '../components/SEOMeta.vue'
 
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
-const { t, locale } = useI18n()
 const { isMobile } = useResponsive()
 
 const loading = ref(false)
@@ -20,6 +22,7 @@ const checkInterval = ref(null)
 const currentLyric = ref('')
 const showLyrics = ref(true)
 const imageLoaded = ref(false)
+const currentLyricIndex = ref(0)
 
 // 音频相关的响应式变量
 const audioPlayer = ref(null)
@@ -44,6 +47,67 @@ const showProgressHandle = ref(false)
 // Add primary and accent colors for visualization
 const primaryColor = ref('75, 123, 255') // RGB values for primary color
 const accentColor = ref('127, 159, 255') // RGB values for accent color
+
+// 添加页面元信息的响应式数据
+const pageTitle = computed(() => {
+  if (!work.value) return t('workDetail.defaultTitle')
+  return `${work.value.title} | ${work.value.author?.username || 'Photo Song'} - AI 生成的音乐作品`
+})
+
+const pageDescription = computed(() => {
+  if (!work.value) return t('workDetail.defaultDescription')
+  return `${work.value.description || ''}. 由 ${work.value.author?.username || 'Photo Song'} 使用 AI 技术创作的独特音乐作品，基于图片生成。播放次数：${work.value.playCount || 0}。`
+})
+
+const pageKeywords = computed(() => {
+  if (!work.value) return ['photo music', 'AI music', 'photo song']
+  const baseKeywords = ['AI音乐', '图片音乐', '音乐生成', 'AI创作', '照片音乐']
+  const titleKeywords = work.value.title?.split(' ') || []
+  const authorKeywords = [work.value.author?.username || '']
+  const customKeywords = work.value.tags || []
+  return [...baseKeywords, ...titleKeywords, ...authorKeywords, ...customKeywords].filter(Boolean)
+})
+
+const pageImage = computed(() => work.value?.imageUrl || '/default-og-image.jpg')
+
+const pageUrl = computed(() => `https://photosong.com/work/${work.value?.id}`)
+
+// 更新页面元数据
+const updateMeta = () => {
+  if (!work.value) return
+  
+  const title = t('workDetail.meta.title', { title: work.value.title })
+  const description = t('workDetail.meta.description', { description: work.value.description })
+  
+  useHead({
+    title,
+    meta: [
+      { name: 'description', content: description },
+      { property: 'og:title', content: title },
+      { property: 'og:description', content: description },
+      { property: 'og:image', content: work.value.imageUrl },
+      { property: 'og:type', content: 'music.song' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: title },
+      { name: 'twitter:description', content: description },
+      { name: 'twitter:image', content: work.value.imageUrl }
+    ]
+  })
+}
+
+// 在 setup 作用域内初始化 head
+useHead({
+  title: computed(() => pageTitle.value),
+  meta: computed(() => [
+    { name: 'description', content: pageDescription.value },
+    { name: 'keywords', content: pageKeywords.value.join(',') },
+    { property: 'og:title', content: pageTitle.value },
+    { property: 'og:description', content: pageDescription.value },
+    { property: 'og:image', content: pageImage.value },
+    { property: 'og:url', content: pageUrl.value },
+    { property: 'og:type', content: 'music.song' }
+  ])
+})
 
 // 优化图片加载
 const handleImageLoad = () => {
@@ -108,17 +172,11 @@ const handleProgressClick = (event) => {
   currentTime.value = newTime
 }
 
-// Add initVisualizer function
+// 添加音频可视化相关的函数
 const initVisualizer = () => {
-  if (!audioContext.value || !audioSource.value || !visualizer.value) return
+  if (!audioContext.value || !audioSource.value || !visualizer.value || !isVisualizing.value) return
   
   try {
-    if (!analyser.value) {
-      analyser.value = audioContext.value.createAnalyser()
-      audioSource.value.connect(analyser.value)
-      analyser.value.connect(audioContext.value.destination)
-    }
-    
     analyser.value.fftSize = 256
     const bufferLength = analyser.value.frequencyBinCount
     const dataArray = new Uint8Array(bufferLength)
@@ -153,117 +211,79 @@ const initVisualizer = () => {
       }
     }
     
-    isVisualizing.value = true
     draw()
   } catch (error) {
     console.error('Error initializing visualizer:', error)
   }
 }
 
-// 修改音频上下文初始化
-const initAudioContext = () => {
-  if (!audioContext.value) {
+// 修改音频初始化逻辑
+const initAudioContext = async () => {
+  if (!audioInitialized.value && !audioContext.value) {
     try {
-      audioContext.value = new (window.AudioContext || window.webkitAudioContext)()
+      // 只在用户交互时创建 AudioContext
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      
+      // 确保 AudioContext 已经启动
+      if (ctx.state === 'suspended') {
+        await ctx.resume()
+      }
+      
+      audioContext.value = ctx
+      audioSource.value = audioContext.value.createMediaElementSource(audioPlayer.value)
+      analyser.value = audioContext.value.createAnalyser()
+      audioSource.value.connect(analyser.value)
+      analyser.value.connect(audioContext.value.destination)
+      audioInitialized.value = true
+      
+      // 初始化可视化
+      initVisualizer()
     } catch (error) {
-      console.error('Failed to initialize AudioContext:', error)
-      ElMessage.error(t('errors.audioInit'))
-      return false
+      console.error('Failed to initialize audio context:', error)
+      ElMessage.error(t('workDetail.error.audioInit'))
+    }
+  } else if (audioContext.value?.state === 'suspended') {
+    try {
+      // 如果 AudioContext 被暂停，则恢复它
+      await audioContext.value.resume()
+    } catch (error) {
+      console.error('Failed to resume audio context:', error)
+      ElMessage.error(t('workDetail.error.audioResume'))
     }
   }
-  
-  if (audioContext.value.state === 'suspended') {
-    audioContext.value.resume().catch(console.error)
-  }
-  return true
 }
 
-// 修改播放处理函数
-const handlePlay = async () => {
-  if (!audioPlayer.value) return
-  
-  // 确保在用户交互时初始化 AudioContext
-  if (!initAudioContext()) return
-  
-  try {
-    if (audioPlayer.value.paused) {
-      await audioPlayer.value.play()
-      isPlaying.value = true
-      startVisualization()
-    } else {
-      audioPlayer.value.pause()
-      isPlaying.value = false
-      stopVisualization()
-    }
-  } catch (error) {
-    console.error('Play/pause failed:', error)
-    ElMessage.error(t('errors.playback'))
-  }
-}
-
-// 处理音频播放
-const handleAudioPlay = async () => {
-  try {
-    await initAudioContext()
-    isPlaying.value = true
-  } catch (error) {
-    console.error('Error playing audio:', error)
-    ElMessage.error(t('workDetail.error.playFailed'))
-  }
-}
-
-// 处理音频暂停
-const handleAudioPause = () => {
-  isPlaying.value = false
-}
-
-// 修改音频播放控制
+// 修改播放/暂停逻辑
 const togglePlay = async () => {
   if (!audioPlayer.value) return
   
   try {
+    // 确保在用户交互时初始化 AudioContext
+    await initAudioContext()
+    
     if (isPlaying.value) {
-      audioPlayer.value.pause()
+      await audioPlayer.value.pause()
       isPlaying.value = false
       isVisualizing.value = false
-    } else {
-      // 在播放前初始化 AudioContext
-      if (!audioContext.value) {
-        await initAudioContext()
-      }
       
-      // 确保 AudioContext 已恢复
+      // 暂停时也暂停 AudioContext
+      if (audioContext.value?.state === 'running') {
+        await audioContext.value.suspend()
+      }
+    } else {
+      // 播放前确保 AudioContext 是活跃的
       if (audioContext.value?.state === 'suspended') {
         await audioContext.value.resume()
       }
       
-      // 设置音频源
-      if (audioContext.value && !audioSource.value && audioPlayer.value) {
-        audioSource.value = audioContext.value.createMediaElementSource(audioPlayer.value)
-        audioSource.value.connect(audioContext.value.destination)
-      }
-      
-      try {
-        await audioPlayer.value.play()
-        isPlaying.value = true
-        isVisualizing.value = true
-        
-        // 初始化可视化效果
-        if (!analyser.value) {
-          initVisualizer()
-        }
-      } catch (playError) {
-        console.error('Play failed:', playError)
-        if (playError.name === 'NotAllowedError') {
-          ElMessage.warning('请点击播放按钮开始播放')
-        } else {
-          ElMessage.error('播放失败，请重试')
-        }
-      }
+      await audioPlayer.value.play()
+      isPlaying.value = true
+      isVisualizing.value = true
+      initVisualizer()
     }
   } catch (error) {
     console.error('Failed to toggle play:', error)
-    ElMessage.error('音频初始化失败，请重试')
+    ElMessage.error(t('workDetail.error.playFailed'))
   }
 }
 
@@ -284,10 +304,23 @@ const toggleFullLyrics = () => {
   showFullLyrics.value = !showFullLyrics.value
 }
 
-// 更新当前歌词显示
+// 添加歌词相关的响应式变量
+const isLyricsExpanded = ref(false)
+const maxCollapsedHeight = 200 // 折叠时的最大高度（像素）
+
+// 处理歌词展开/折叠
+const toggleLyrics = () => {
+  isLyricsExpanded.value = !isLyricsExpanded.value
+}
+
+// 更新当前歌词
 const updateCurrentLyric = () => {
-  if (!work.value?.lyrics) return
-  currentLyric.value = work.value.lyrics
+  if (!work.value?.lyrics || !audioPlayer.value) return
+  
+  const currentTimeInSeconds = audioPlayer.value.currentTime
+  const lyrics = work.value.lyrics.split('\n')
+  const currentIndex = Math.floor((currentTimeInSeconds / duration.value) * lyrics.length)
+  currentLyric.value = lyrics[currentIndex] || ''
 }
 
 // 分享功能
@@ -395,7 +428,7 @@ const fetchWork = async () => {
     const result = await query.get(route.params.id)
     
     if (!result) {
-      throw new Error('作品不存在')
+      throw new Error(t('workDetail.errors.notFound'))
     }
     
     // 获取播放次数
@@ -415,15 +448,15 @@ const fetchWork = async () => {
     
     work.value = {
       id: result.id,
-      title: result.get('title'),
-      description: result.get('description'),
+      title: result.get('title') || t('workDetail.untitledWork'),
+      description: result.get('description') || '',
       imageUrl: result.get('imageUrl') || result.get('imageFile')?.url() || '',
       audioUrl: result.get('audioUrl') || result.get('musicFile')?.url() || '',
-      style: result.get('style'),
+      style: result.get('style') || '',
       languages: result.get('languages') || [],
       relevance: result.get('relevance') || 'medium',
       imageAnalysis: result.get('imageAnalysis') || '',
-      plays: playCount, // 使用实际的播放记录数
+      plays: playCount,
       lyrics: result.get('lyrics') || '',
       status: result.get('status') || 'completed',
       progress: result.get('progress') || 0,
@@ -433,8 +466,14 @@ const fetchWork = async () => {
       completedTime: result.get('completedTime'),
       user: {
         id: result.get('user')?.id,
-        username: result.get('user')?.get('username') || '匿名用户',
-        avatar: result.get('user')?.get('avatar') || '/default-avatar.png'
+        username: result.get('user')?.get('username') || t('workDetail.anonymousUser'),
+        avatar: (() => {
+          const avatar = result.get('user')?.get('avatar')
+          if (avatar instanceof AV.File) {
+            return avatar.url()
+          }
+          return avatar || '/default-avatar.png'
+        })()
       }
     }
     
@@ -442,46 +481,24 @@ const fetchWork = async () => {
     if (work.value.status === 'generating' && work.value.taskId) {
       checkInterval.value = setInterval(checkGenerationStatus, 10000)
     }
+    
+    // 更新页面标题和元数据
+    updateMeta()
   } catch (err) {
     console.error('Error fetching work:', err)
-    error.value = err.message || '作品加载失败'
+    error.value = err.message || t('workDetail.errors.loadFailed')
     ElMessage.error(error.value)
-    router.push('/community')
+    router.push({ name: `${locale.value}-Community` })
   } finally {
     loading.value = false
   }
 }
 
-// 清理事件监听
-onUnmounted(() => {
-  if (audioPlayer.value) {
-    audioPlayer.value.pause()
-    audioPlayer.value.removeEventListener('play', handleAudioPlay)
-    audioPlayer.value.removeEventListener('pause', handleAudioPause)
-    audioPlayer.value.removeEventListener('timeupdate', handleTimeUpdate)
-  }
-  if (audioContext.value) {
-    audioContext.value.close().catch(console.error)
-  }
-  if (audioSource.value) {
-    audioSource.value.disconnect()
-  }
-  if (checkInterval.value) {
-    clearInterval(checkInterval.value)
-  }
-  isVisualizing.value = false
-})
+// 监听路由参数变化
+watch(() => route.params.id, fetchWork, { immediate: true })
 
-onMounted(() => {
-  fetchWork()
-  
-  // 只设置事件监听，不初始化 AudioContext
-  if (audioPlayer.value) {
-    audioPlayer.value.addEventListener('play', handleAudioPlay)
-    audioPlayer.value.addEventListener('pause', handleAudioPause)
-    audioPlayer.value.addEventListener('timeupdate', handleTimeUpdate)
-  }
-})
+// 组件挂载时获取数据
+onMounted(fetchWork)
 
 // Add computed property for avatar URL
 const userAvatarUrl = computed(() => {
@@ -575,90 +592,53 @@ const handleLyricsMouseLeave = () => {
   }
 }
 
-// Add meta tags and structured data
-const updateMetaTags = () => {
-  if (!work.value) return
+// 添加请求限制和重试逻辑
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1秒延迟
 
-  // Get available languages
-  const languages = ['en', 'zh', 'ru']
-  
-  // Set meta tags
-  document.title = work.value[`title_${locale.value}`] || work.value.title || t('workDetail.untitledWork')
-  
-  // Update meta description
-  const metaDescription = document.querySelector('meta[name="description"]')
-  if (metaDescription) {
-    metaDescription.setAttribute('content', work.value[`description_${locale.value}`] || work.value.description || t('workDetail.defaultDescription'))
-  }
-  
-  // Add hreflang tags
-  languages.forEach(lang => {
-    let link = document.querySelector(`link[hreflang="${lang}"]`)
-    if (!link) {
-      link = document.createElement('link')
-      link.setAttribute('rel', 'alternate')
-      link.setAttribute('hreflang', lang)
-      document.head.appendChild(link)
+const updateWorkWithRetry = async (work, updates, retryCount = 0) => {
+  try {
+    if (retryCount >= MAX_RETRIES) {
+      throw new Error('Maximum retry attempts reached')
     }
-    link.setAttribute('href', `https://photosong.com/${lang}/work/${work.value.objectId}`)
-  })
-  
-  // Add x-default hreflang
-  let xDefaultLink = document.querySelector('link[hreflang="x-default"]')
-  if (!xDefaultLink) {
-    xDefaultLink = document.createElement('link')
-    xDefaultLink.setAttribute('rel', 'alternate')
-    xDefaultLink.setAttribute('hreflang', 'x-default')
-    document.head.appendChild(xDefaultLink)
-  }
-  xDefaultLink.setAttribute('href', `https://photosong.com/work/${work.value.objectId}`)
-  
-  // Add structured data
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'MusicComposition',
-    'name': work.value[`title_${locale.value}`] || work.value.title,
-    'creator': {
-      '@type': 'Person',
-      'name': work.value.creator?.username || t('workDetail.anonymousUser')
-    },
-    'dateCreated': work.value.createdAt,
-    'dateModified': work.value.updatedAt,
-    'image': work.value.imageUrl,
-    'audio': work.value.audioUrl,
-    'inLanguage': locale.value,
-    'description': work.value[`description_${locale.value}`] || work.value.description,
-    'url': `https://photosong.com/${locale.value}/work/${work.value.objectId}`,
-    'potentialAction': {
-      '@type': 'ListenAction',
-      'target': {
-        '@type': 'EntryPoint',
-        'urlTemplate': `https://photosong.com/${locale.value}/work/${work.value.objectId}`
-      }
+    
+    await work.save(updates)
+  } catch (error) {
+    if (error.code === 429) { // Too Many Requests
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)))
+      return updateWorkWithRetry(work, updates, retryCount + 1)
     }
+    
+    console.error('Failed to update work:', error)
+    ElMessage.error(t('workDetail.error.updateFailed'))
+    throw error
   }
-  
-  let scriptTag = document.querySelector('#work-structured-data')
-  if (!scriptTag) {
-    scriptTag = document.createElement('script')
-    scriptTag.id = 'work-structured-data'
-    scriptTag.type = 'application/ld+json'
-    document.head.appendChild(scriptTag)
-  }
-  scriptTag.textContent = JSON.stringify(structuredData)
 }
 
-// Update meta tags when work data changes
-watch(() => work.value, updateMetaTags, { immediate: true })
-watch(() => locale.value, updateMetaTags)
+// 修改现有的更新逻辑
+const handleUpdate = async (updates) => {
+  if (!work.value) return
+  
+  try {
+    loading.value = true
+    await updateWorkWithRetry(work.value, updates)
+    ElMessage.success(t('workDetail.success.updated'))
+  } catch (error) {
+    // 错误已在 updateWorkWithRetry 中处理
+  } finally {
+    loading.value = false
+  }
+}
 
-// Clean up meta tags on component unmount
-onUnmounted(() => {
-  // Remove hreflang tags
-  document.querySelectorAll('link[hreflang]').forEach(el => el.remove())
-  // Remove structured data
-  document.querySelector('#work-structured-data')?.remove()
-})
+// 更新歌词显示
+const updateLyrics = () => {
+  if (!work.value?.lyrics) return
+  const lines = work.value.lyrics.split('\n')
+  if (lines.length > 0) {
+    currentLyricIndex.value = Math.min(currentLyricIndex.value, lines.length - 1)
+    currentLyric.value = lines[currentLyricIndex.value]
+  }
+}
 </script>
 
 <template>
@@ -700,9 +680,10 @@ onUnmounted(() => {
                   <p 
                     v-for="(line, index) in work.lyrics.split('\n')"
                     :key="index"
-                    class="lyric-line"
-                    :class="{ 'current': currentLyric === line }"
-                  >{{ line || '&nbsp;' }}</p>
+                    :class="{ 'current': index === currentLyricIndex }"
+                  >
+                    {{ line }}
+                  </p>
                 </div>
               </div>
               <!-- 只在生成中或失败时显示遮罩 -->
@@ -875,16 +856,42 @@ onUnmounted(() => {
                     class="lyrics-switch"
                   />
                 </h3>
-                <div 
-                  v-show="showLyrics"
-                  class="lyrics-content"
-                >
-                  <p 
-                    v-for="(line, index) in work.lyrics.split('\n')"
-                    :key="index"
-                    class="lyric-line"
-                    :class="{ 'current': currentLyric === line }"
-                  >{{ line || '&nbsp;' }}</p>
+                <div class="lyrics-section" v-if="work?.lyrics">
+                  <div class="lyrics-header">
+                    <h3>{{ t('workDetail.lyrics.title') }}</h3>
+                    <el-button 
+                      link
+                      @click="toggleLyrics"
+                      class="toggle-lyrics-btn"
+                    >
+                      {{ isLyricsExpanded ? t('workDetail.lyrics.hide') : t('workDetail.lyrics.show') }}
+                    </el-button>
+                  </div>
+                  
+                  <div 
+                    class="lyrics-content"
+                    :class="{ 'expanded': isLyricsExpanded }"
+                    :style="{ maxHeight: isLyricsExpanded ? 'none' : `${maxCollapsedHeight}px` }"
+                  >
+                    <div class="current-lyric" v-if="currentLyric">
+                      {{ currentLyric }}
+                    </div>
+                    <div class="lyrics-text">
+                      <p 
+                        v-for="(line, index) in work.lyrics.split('\n')"
+                        :key="index"
+                        :class="{ 'active': line === currentLyric }"
+                      >
+                        {{ line }}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div 
+                    class="lyrics-fade"
+                    v-if="!isLyricsExpanded && work.lyrics.split('\n').length > 5"
+                    @click="toggleLyrics"
+                  ></div>
                 </div>
               </div>
             </div>
@@ -1067,7 +1074,7 @@ onUnmounted(() => {
 .player-section {
   padding: 2rem;
   border-radius: 1.5rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(19 28 46);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   
@@ -1299,7 +1306,7 @@ onUnmounted(() => {
       .lyrics-content {
         margin-top: 1rem;
         padding: 1.5rem;
-        background: rgba(255, 255, 255, 0.03);
+        background: rgb(19 28 46);
         border-radius: 1rem;
         border: 1px solid rgba(255, 255, 255, 0.1);
         
@@ -1379,7 +1386,7 @@ onUnmounted(() => {
 .author-section {
   margin-top: 2rem;
   padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(19 28 46);
   border-radius: 1.5rem;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1570,6 +1577,147 @@ onUnmounted(() => {
   }
   100% {
     transform: translateX(100%);
+  }
+}
+
+.lyrics-section {
+  position: relative;
+  margin: 2rem 0;
+  background: var(--card-background);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+}
+
+.lyrics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.lyrics-content {
+  position: relative;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.current-lyric {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--primary-color);
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background: rgba(var(--primary-color-rgb), 0.1);
+  border-radius: 0.75rem;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 2px 4px 0 rgba(255, 255, 255, 0.1);
+}
+
+.lyrics-text {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--text-color);
+  
+  p {
+    margin: 0.75rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    &.active {
+      background: rgba(var(--primary-color-rgb), 0.1);
+      color: var(--primary-color);
+      transform: scale(1.02) translateX(8px);
+      font-weight: 500;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    &:hover:not(.active) {
+      background: rgba(var(--primary-color-rgb), 0.05);
+      transform: translateX(4px);
+    }
+  }
+}
+
+.lyrics-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--card-background) 90%
+  );
+  pointer-events: none;
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+  
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+.toggle-lyrics-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.1);
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(var(--primary-color-rgb), 0.15);
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .lyrics-section {
+    margin: 1rem 0;
+    padding: 1rem;
+  }
+  
+  .current-lyric {
+    font-size: 1.1rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .lyrics-text {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    
+    p {
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      
+      &.active {
+        transform: scale(1.01) translateX(4px);
+      }
+    }
+  }
+  
+  .toggle-lyrics-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
   }
 }
 </style> 

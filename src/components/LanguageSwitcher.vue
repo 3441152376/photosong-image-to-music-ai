@@ -2,8 +2,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowDown } from '@element-plus/icons-vue'
+import { useRouter, useRoute } from 'vue-router'
+
+// 导入支持的语言列表
+const supportedLocales = ['zh', 'en', 'ru']
 
 const { locale } = useI18n()
+const router = useRouter()
+const route = useRoute()
 
 const languages = [
   {
@@ -50,20 +56,33 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-const switchLanguage = (langCode) => {
+const switchLanguage = async (langCode) => {
   if (langCode === locale.value) return
   
   locale.value = langCode
   localStorage.setItem('language', langCode)
   isDropdownVisible.value = false
   
-  // 触发自定义事件，通知父组件语言已更改
-  window.dispatchEvent(new CustomEvent('language-changed', { detail: langCode }))
+  // 更新URL中的语言前缀
+  const currentPath = route.path
+  const segments = currentPath.split('/')
   
-  // 添加短暂延迟后刷新页面，确保语言设置已保存
-  setTimeout(() => {
-    window.location.reload()
-  }, 100)
+  // 如果第一段是语言代码，则替换它；否则添加语言代码
+  if (supportedLocales.includes(segments[1])) {
+    segments[1] = langCode
+  } else {
+    segments.splice(1, 0, langCode)
+  }
+  
+  const newPath = segments.join('/')
+  
+  try {
+    await router.push(newPath)
+  } catch (error) {
+    console.error('Failed to update route:', error)
+    // 如果路由更新失败，回退到首页
+    router.push(`/${langCode}`)
+  }
 }
 </script>
 

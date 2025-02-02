@@ -3,8 +3,14 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import TheNavbar from '../components/TheNavbar.vue'
 import TheFooter from '../components/TheFooter.vue'
+import { QuestionFilled, Message, ChatDotRound } from '@element-plus/icons-vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+// 生成本地化的路由名称
+const getLocalizedRouteName = (baseName) => {
+  return `${locale.value}-${baseName}`
+}
 
 const tutorials = ref([
   {
@@ -81,15 +87,15 @@ const tutorials = ref([
         <h2>{{ t('tutorial.help.title') }}</h2>
         <p>{{ t('tutorial.help.description') }}</p>
         <div class="help-links">
-          <router-link to="/faq" class="help-link">
-            <el-icon><Question /></el-icon>
+          <router-link :to="{ name: getLocalizedRouteName('faq') }" class="help-link">
+            <el-icon><QuestionFilled /></el-icon>
             {{ t('tutorial.help.faq') }}
           </router-link>
-          <router-link to="/contact" class="help-link">
+          <router-link :to="{ name: getLocalizedRouteName('contact') }" class="help-link">
             <el-icon><Message /></el-icon>
             {{ t('tutorial.help.contact') }}
           </router-link>
-          <router-link to="/feedback" class="help-link">
+          <router-link :to="{ name: getLocalizedRouteName('feedback') }" class="help-link">
             <el-icon><ChatDotRound /></el-icon>
             {{ t('tutorial.help.feedback') }}
           </router-link>

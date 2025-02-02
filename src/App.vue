@@ -3,7 +3,7 @@ import { RouterView, useRoute } from 'vue-router'
 import { ElConfigProvider } from 'element-plus'
 import SeoMeta from './components/SeoMeta.vue'
 import CookieConsent from './components/CookieConsent.vue'
-import { computed } from 'vue'
+import { computed, watch, onMounted, nextTick } from 'vue'
 
 const route = useRoute()
 
@@ -40,12 +40,33 @@ const seoMeta = computed(() => {
 
   return base
 })
+
+// 监听路由变化
+watch(
+  () => route.fullPath,
+  (newPath, oldPath) => {
+    if (newPath !== oldPath) {
+      // 强制组件重新渲染
+      nextTick(() => {
+        window.scrollTo(0, 0)
+      })
+    }
+  }
+)
+
+// 组件挂载时的处理
+onMounted(() => {
+  // 初始化时滚动到顶部
+  window.scrollTo(0, 0)
+})
 </script>
 
 <template>
   <el-config-provider>
     <SeoMeta v-bind="seoMeta" />
-    <RouterView />
+    <RouterView :key="route.fullPath" v-slot="{ Component }">
+      <component :is="Component" :key="route.fullPath" />
+    </RouterView>
     <CookieConsent />
   </el-config-provider>
 </template>

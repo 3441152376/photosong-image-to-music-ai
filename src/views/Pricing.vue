@@ -2,38 +2,40 @@
   <div class="pricing-page">
     <TheNavbar />
     
-    <div class="container">
-      <div class="pricing-header">
-        <br>
-        <br>
-        <br>
-        <br>
+    <!-- Hero Section -->
+    <div class="hero-section">
+      <div class="container">
+        <h1 class="hero-title">{{ t('pricing.title') }}</h1>
+        <p class="hero-subtitle">{{ t('pricing.subtitle') }}</p>
+        <p class="hero-description">{{ t('pricing.description') }}</p>
         
-        <h1 class="gradient-text">{{ t('pricing.title') }}</h1>
-        <p class="subtitle">{{ t('pricing.subtitle') }}</p>
-          </div>
-      
-      <!-- 积分
-      <div class="points-info glass-card">
-        <div class="points-header">
-          <el-icon><Star /></el-icon>
-          <h2>创作积分说明</h2>
-        </div>
-        <div class="points-content">
-          <p>创作积分是您在平台上进行音乐创作的能量值</p>
-          <ul>
-            <li>创建一首歌曲消耗 100 积分</li>
-            <li>每日登录奖励 10 积分</li>
-            <li>分享作品奖励 20 积分</li>
-            <li>作品获赞奖励 5 积分</li>
-          </ul>
+        <!-- 添加登录提示 -->
+        <div v-if="!userStore.isAuthenticated" class="login-prompt glass-card">
+          <el-alert
+            :title="t('pricing.loginPrompt.title')"
+            :description="t('pricing.loginPrompt.description')"
+            type="info"
+            show-icon
+            :closable="false"
+            class="mb-4"
+          />
+          <el-button 
+            type="primary" 
+            class="login-btn"
+            @click="handleLoginClick"
+          >
+            {{ t('pricing.loginPrompt.button') }}
+          </el-button>
         </div>
       </div>
-说明 -->
+    </div>
+
+    <div class="container">
       <!-- 会员方案 -->
-      <div class="pricing-plans">
+      <div class="pricing-plans-section">
+        <div class="pricing-grid">
         <!-- 体验会员 -->
-        <div class="plan-card glass-card">
+          <div class="plan-card">
           <div class="plan-header">
             <h3>{{ t('pricing.plans.starter.name') }}</h3>
             <div class="price">
@@ -50,14 +52,14 @@
               <span>{{ t(`pricing.plans.starter.features.${feature}`) }}</span>
             </div>
           </div>
-          <el-button type="primary" class="subscribe-btn" :loading="isLoading" @click="handleSubscribe('trial')">
-            {{ t('pricing.plans.button') }}
-          </el-button>
+            <el-button type="primary" class="subscribe-btn" :loading="isLoading" @click="handleSubscribe('trial')">
+              {{ t('pricing.plans.starter.name') }}
+            </el-button>
         </div>
 
         <!-- 进阶会员 -->
-        <div class="plan-card glass-card featured">
-          <div class="plan-badge">{{ t('pricing.membership.mostPopular') }}</div>
+          <div class="plan-card popular">
+            <div class="popular-badge">{{ t('pricing.membership.mostPopular') }}</div>
           <div class="plan-header">
             <h3>{{ t('pricing.plans.advanced.name') }}</h3>
             <div class="price">
@@ -74,13 +76,13 @@
               <span>{{ t(`pricing.plans.advanced.features.${feature}`) }}</span>
             </div>
           </div>
-          <el-button type="primary" class="subscribe-btn glow" :loading="isLoading" @click="handleSubscribe('pro')">
-            {{ t('pricing.plans.button') }}
-          </el-button>
+            <el-button type="primary" class="subscribe-btn glow" :loading="isLoading" @click="handleSubscribe('pro')">
+              {{ t('pricing.plans.advanced.name') }}
+            </el-button>
         </div>
 
         <!-- 专业会员 -->
-        <div class="plan-card glass-card">
+          <div class="plan-card">
           <div class="plan-header">
             <h3>{{ t('pricing.plans.pro.name') }}</h3>
             <div class="price">
@@ -97,17 +99,18 @@
               <span>{{ t(`pricing.plans.pro.features.${feature}`) }}</span>
             </div>
           </div>
-          <el-button type="primary" class="subscribe-btn" :loading="isLoading" @click="handleSubscribe('premium')">
-            {{ t('pricing.plans.button') }}
-          </el-button>
+            <el-button type="primary" class="subscribe-btn" :loading="isLoading" @click="handleSubscribe('premium')">
+              {{ t('pricing.plans.pro.name') }}
+            </el-button>
         </div>
 
         <!-- 永久会员 -->
-        <div class="plan-card glass-card special">
+          <div class="plan-card lifetime">
+            <div class="lifetime-badge">∞</div>
           <div class="plan-header">
             <h3>{{ t('pricing.plans.lifetime.name') }}</h3>
             <div class="price">
-              <span class="amount">400</span>
+                <span class="amount">400</span>
               <span class="currency">$</span>
               <span class="period">/{{ t('pricing.plans.period.lifetime') }}</span>
             </div>
@@ -120,33 +123,36 @@
               <span>{{ t(`pricing.plans.lifetime.features.${feature}`) }}</span>
             </div>
           </div>
-          <el-button type="primary" class="subscribe-btn special-btn" :loading="isLoading" @click="handleSubscribe('lifetime')">
-            {{ t('pricing.plans.button') }}
-          </el-button>
+            <el-button type="primary" class="subscribe-btn lifetime-btn" :loading="isLoading" @click="handleSubscribe('lifetime')">
+              {{ t('pricing.plans.lifetime.name') }}
+            </el-button>
+          </div>
         </div>
       </div>
 
       <!-- 积分购买 -->
-      <div class="points-purchase glass-card">
-        <h2>{{ t('pricing.points.title') }}</h2>
+      <div class="points-section">
+        <h2 class="section-title">{{ t('pricing.points.title') }}</h2>
         <div class="points-rate">{{ t('pricing.points.rate') }}</div>
-        <div class="points-packages">
+        <div class="points-grid">
           <div v-for="(pkg, index) in pricingConfig.points.packages" 
                :key="index" 
-               class="package"
-               :class="{ 'featured': index === 1 }"
+               class="points-card"
+               :class="{ 'recommended': index === 1 }"
           >
-            <div class="package-badge" v-if="index === 1">{{ t('pricing.points.packages.recommended') }}</div>
+            <div v-if="index === 1" class="recommended-badge">
+              {{ t('pricing.points.packages.recommended') }}
+            </div>
             <h3>{{ t(`pricing.points.packages.${index}.name`) }}</h3>
             <div class="points-amount">
               <span class="points-value">{{ pkg.points }}</span>
-              <span class="points-label">{{ t('pricing.points.unit') }}</span>
+              <span class="points-unit">{{ t('pricing.points.unit') }}</span>
             </div>
             <div class="points-price">
               <span class="currency">$</span>
               <span class="amount">{{ pkg.price }}</span>
             </div>
-            <p class="package-desc">{{ t(`pricing.points.packages.${index}.description`) }}</p>
+            <p class="points-desc">{{ t(`pricing.points.packages.${index}.description`) }}</p>
             <el-button 
               type="primary" 
               class="purchase-btn"
@@ -161,45 +167,23 @@
       </div>
 
       <!-- 会员特权说明 -->
-      <div class="membership-benefits">
-        <h2 class="gradient-text">{{ t('pricing.membership.benefits.title') }}</h2>
+      <div class="benefits-section">
+        <h2 class="section-title">{{ t('pricing.membership.benefits.title') }}</h2>
         <div class="benefits-grid">
-          <div class="benefit-card glass-card">
-            <el-icon><MagicStick /></el-icon>
-            <h3>{{ t('pricing.membership.benefits.features.advanced.title') }}</h3>
-            <p>{{ t('pricing.membership.benefits.features.advanced.description') }}</p>
-            <ul class="benefit-details">
-              <li v-for="detail in getBenefitDetails('advanced')" :key="detail">
-                {{ detail }}
-              </li>
-            </ul>
+          <div v-for="(benefit, key) in ['advanced', 'templates', 'copyright', 'priority']"
+               :key="key"
+               class="benefit-card">
+            <div class="benefit-icon">
+              <el-icon v-if="key === 'advanced'"><MagicStick /></el-icon>
+              <el-icon v-else-if="key === 'templates'"><Collection /></el-icon>
+              <el-icon v-else-if="key === 'copyright'"><CopyDocument /></el-icon>
+              <el-icon v-else><Star /></el-icon>
           </div>
-          <div class="benefit-card glass-card">
-            <el-icon><Collection /></el-icon>
-            <h3>{{ t('pricing.membership.benefits.features.templates.title') }}</h3>
-            <p>{{ t('pricing.membership.benefits.features.templates.description') }}</p>
-            <ul class="benefit-details">
-              <li v-for="detail in getBenefitDetails('templates')" :key="detail">
-                {{ detail }}
-              </li>
-            </ul>
-          </div>
-          <div class="benefit-card glass-card">
-            <el-icon><CopyDocument /></el-icon>
-            <h3>{{ t('pricing.membership.benefits.features.copyright.title') }}</h3>
-            <p>{{ t('pricing.membership.benefits.features.copyright.description') }}</p>
-            <ul class="benefit-details">
-              <li v-for="detail in getBenefitDetails('copyright')" :key="detail">
-                {{ detail }}
-              </li>
-            </ul>
-          </div>
-          <div class="benefit-card glass-card">
-            <el-icon><Star /></el-icon>
-            <h3>{{ t('pricing.membership.benefits.features.priority.title') }}</h3>
-            <p>{{ t('pricing.membership.benefits.features.priority.description') }}</p>
-            <ul class="benefit-details">
-              <li v-for="detail in getBenefitDetails('priority')" :key="detail">
+            <h3>{{ t(`pricing.membership.benefits.features.${benefit}.title`) }}</h3>
+            <p>{{ t(`pricing.membership.benefits.features.${benefit}.description`) }}</p>
+            <ul class="benefit-list">
+              <li v-for="detail in t(`pricing.membership.benefits.features.${benefit}.details`).split('\n')"
+                  :key="detail">
                 {{ detail }}
               </li>
             </ul>
@@ -210,172 +194,29 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { 
-  Star, 
-  Check, 
-  MagicStick,
-  Collection, 
-  CopyDocument 
-} from '@element-plus/icons-vue'
-import TheNavbar from '../components/TheNavbar.vue'
-import { useRouter } from 'vue-router'
-import { loadStripe } from '@stripe/stripe-js'
-import { ElMessage } from 'element-plus'
-import { useUserStore } from '../stores/user'
-import AV from 'leancloud-storage'
-import pricingConfig from '../config/pricing.json'
-
-const PRICE_MAP = {
-  trial: 'price_1QlYNRHVMy0i1BlJA1y0DxB2',
-  pro: 'pprice_1QlYO1HVMy0i1BlJyDD3GlsN',
-  premium: 'price_1QlYOaHVMy0i1BlJ1ZpdOMAO',
-  lifetime: 'price_1QlYOrHVMy0i1BlJDHxIswM7'
-}
-
-const POINTS_PRICE_MAP = {
-  0: 'price_1Qme87HVMy0i1BlJR1PRWOgz',
-  1: 'price_1Qme9BHVMy0i1BlJwFyjwZwj',
-  2: 'price_1QmeA6HVMy0i1BlJQD5dc34Z'
-}
-
-const router = useRouter()
-const { t } = useI18n()
-const userStore = useUserStore()
-const isLoading = ref(false)
-const stripe = ref(null)
-
-onMounted(async () => {
-  stripe.value = await loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
-})
-
-// 处理 AudioContext
-const initAudioContext = () => {
-  if (typeof window !== 'undefined' && window.AudioContext) {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-    if (audioContext.state === 'suspended') {
-      const resumeAudio = () => {
-        audioContext.resume()
-        document.removeEventListener('click', resumeAudio)
-        document.removeEventListener('touchstart', resumeAudio)
-      }
-      document.addEventListener('click', resumeAudio)
-      document.addEventListener('touchstart', resumeAudio)
-    }
-  }
-}
-
-// 在用户交互时初始化 AudioContext
-const handleUserInteraction = () => {
-  initAudioContext()
-  document.removeEventListener('click', handleUserInteraction)
-  document.removeEventListener('touchstart', handleUserInteraction)
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleUserInteraction)
-  document.addEventListener('touchstart', handleUserInteraction)
-})
-
-const handleSubscribe = async (plan) => {
-  if (!userStore.currentUser) {
-    return router.push({
-      path: '/auth',
-      query: { plan }
-    })
-  }
-
-  try {
-    isLoading.value = true
-    const { sessionId } = await AV.Cloud.run('createStripeCheckoutSession', {
-      priceId: PRICE_MAP[plan],
-      userId: userStore.currentUser.id,
-      planType: 'subscription',
-      plan
-    })
-    const result = await stripe.value.redirectToCheckout({ sessionId })
-    
-    if (result.error) {
-      throw new Error(result.error.message)
-    }
-  } catch (error) {
-    console.error('Subscribe failed:', error)
-    ElMessage.error(t('pricing.errors.checkoutFailed'))
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const handlePurchase = async (pkg, index) => {
-  if (!userStore.currentUser) {
-    return router.push({
-      path: '/auth',
-      query: { points: pkg.points }
-    })
-  }
-
-  try {
-    isLoading.value = true
-    const { sessionId } = await AV.Cloud.run('createStripeCheckoutSession', {
-      priceId: POINTS_PRICE_MAP[index],
-      userId: userStore.currentUser.id,
-      planType: 'points',
-      points: pkg.points
-    })
-    const result = await stripe.value.redirectToCheckout({ sessionId })
-    
-    if (result.error) {
-      throw new Error(result.error.message)
-    }
-  } catch (error) {
-    console.error('Purchase failed:', error)
-    ElMessage.error(t('pricing.errors.checkoutFailed'))
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// 获取特权图标
-const getBenefitIcon = (key) => {
-  const icons = {
-    advanced: MagicStick,
-    templates: Collection,
-    copyright: CopyDocument,
-    priority: Star
-  }
-  return icons[key]
-}
-
-// 获取特权详情列表
-const getBenefitDetails = (key) => {
-  const path = `pricing.membership.benefits.features.${key}.details`
-  const details = t(path)
-  return Array.isArray(details) ? details : []
-}
-</script>
-
 <style scoped>
 .pricing-page {
   min-height: 100vh;
-  padding: 2rem 0;
-  background: var(--page-background);
+  background: linear-gradient(
+    to bottom,
+    var(--background-start),
+    var(--background-end)
+  );
 }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.pricing-header {
+.hero-section {
+  padding: 120px 0 60px;
   text-align: center;
-  margin-bottom: 3rem;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--primary-color-rgb), 0.1),
+    rgba(var(--accent-color-rgb), 0.1)
+  );
 }
 
-.gradient-text {
-  font-size: 2.5rem;
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 700;
   background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
   -webkit-background-clip: text;
   background-clip: text;
@@ -383,81 +224,102 @@ const getBenefitDetails = (key) => {
   margin-bottom: 1rem;
 }
 
-.subtitle {
-  font-size: 1.25rem;
+.hero-subtitle {
+  font-size: 1.5rem;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+}
+
+.hero-description {
+  font-size: 1.1rem;
   color: var(--text-color-light);
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.points-info {
-  margin-bottom: 3rem;
-  padding: 2rem;
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
 }
 
-.points-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  
-  .el-icon {
+.section-title {
     font-size: 2rem;
-    color: var(--primary-color);
-  }
-  
-  h2 {
-    font-size: 1.5rem;
+  text-align: center;
+  margin: 3rem 0;
     color: var(--text-color);
   }
+
+/* 会员方案卡片 */
+.pricing-plans-section {
+  padding: 4rem 0;
 }
 
-.points-content {
-  color: var(--text-color-light);
-  
-  ul {
-    margin-top: 1rem;
-    padding-left: 1.5rem;
-    
-    li {
-      margin-bottom: 0.5rem;
-    }
-  }
-}
-
-.pricing-plans {
+.pricing-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2rem;
-  margin-bottom: 3rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 4rem;
 }
 
 .plan-card {
   position: relative;
+  background: var(--card-background);
+  border-radius: 1.5rem;
   padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  
-  &.featured {
-    transform: scale(1.05);
-    border-color: var(--primary-color);
-  }
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid var(--border-color);
 }
 
-.plan-badge {
+.plan-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+.plan-card.popular {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--primary-color-rgb), 0.1),
+    rgba(var(--accent-color-rgb), 0.1)
+  );
+  border: 2px solid var(--primary-color);
+    transform: scale(1.05);
+}
+
+.popular-badge {
   position: absolute;
   top: -12px;
-  right: 2rem;
+  right: 20px;
   background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
   color: white;
-  padding: 0.25rem 1rem;
-  border-radius: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
   font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.lifetime-badge {
+  position: absolute;
+  top: -15px;
+  right: 20px;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
 }
 
 .plan-header {
   text-align: center;
+  margin-bottom: 2rem;
+}
   
-  h3 {
+.plan-header h3 {
     font-size: 1.5rem;
     color: var(--text-color);
     margin-bottom: 1rem;
@@ -468,154 +330,145 @@ const getBenefitDetails = (key) => {
     align-items: baseline;
     justify-content: center;
     gap: 0.25rem;
+}
     
-    .amount {
-      font-size: 3rem;
+.price .amount {
+  font-size: 3.5rem;
       font-weight: 700;
       color: var(--primary-color);
     }
     
-    .currency {
+.price .currency {
       font-size: 1.5rem;
       color: var(--text-color);
     }
     
-    .period {
+.price .period {
       color: var(--text-color-light);
-    }
-  }
 }
 
 .plan-features {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  margin-bottom: 2rem;
+}
   
   .feature {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+  margin-bottom: 1rem;
+  color: var(--text-color);
+}
     
-    .el-icon {
+.feature .el-icon {
       color: var(--primary-color);
-    }
-    
-    span {
-      color: var(--text-color);
-    }
-  }
 }
 
 .subscribe-btn {
   width: 100%;
   height: 48px;
-  
-  &.glow {
-    box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.3);
-  }
+  border-radius: 24px;
+  font-weight: 500;
+  transition: all 0.3s ease;
 }
 
-.points-purchase {
-  padding: 2rem;
-  margin-bottom: 3rem;
-  
-  h2 {
-    text-align: center;
-    font-size: 1.5rem;
-    margin-bottom: 2rem;
-    color: var(--text-color);
-  }
+.subscribe-btn.glow {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  box-shadow: 0 4px 15px rgba(var(--primary-color-rgb), 0.3);
+}
+
+.subscribe-btn.lifetime-btn {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  border: none;
+}
+
+/* 积分购买部分 */
+.points-section {
+  padding: 4rem 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--primary-color-rgb), 0.05),
+    rgba(var(--accent-color-rgb), 0.05)
+  );
+  border-radius: 2rem;
+  margin: 4rem 0;
 }
 
 .points-rate {
   text-align: center;
   font-size: 1.25rem;
-  color: var(--text-color-light);
-  margin: 1rem 0 2rem;
-  padding: 0.5rem;
+  color: var(--text-color);
+  margin-bottom: 3rem;
+  padding: 1rem;
   background: rgba(var(--primary-color-rgb), 0.1);
-  border-radius: 0.5rem;
+  border-radius: 1rem;
+  max-width: 400px;
+  margin: 0 auto 3rem;
 }
 
-.points-packages {
+.points-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
+  padding: 0 2rem;
 }
 
-.package {
+.points-card {
   position: relative;
+  background: var(--card-background);
+  border-radius: 1.5rem;
   padding: 2rem;
-  border-radius: 1rem;
-  background: var(--glass-background);
-  border: 1px solid var(--border-color);
   text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    transform: translateY(-4px);
-    border-color: var(--primary-color);
-  }
-  
-  &.featured {
-    border-color: var(--primary-color);
-    box-shadow: 0 4px 20px rgba(var(--primary-color-rgb), 0.15);
-  }
+  transition: transform 0.3s ease;
+  border: 1px solid var(--border-color);
 }
 
-.package-badge {
+.points-card:hover {
+  transform: translateY(-8px);
+}
+
+.points-card.recommended {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--primary-color-rgb), 0.1),
+    rgba(var(--accent-color-rgb), 0.1)
+  );
+  border: 2px solid var(--primary-color);
+}
+
+.recommended-badge {
   position: absolute;
   top: -12px;
-  right: 2rem;
+  right: 20px;
   background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
   color: white;
-  padding: 0.25rem 1rem;
-  border-radius: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
   font-size: 0.875rem;
 }
 
 .points-amount {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 1rem 0;
+  margin: 1.5rem 0;
 }
 
 .points-value {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: var(--primary-color);
 }
 
-.points-label {
+.points-unit {
   font-size: 1rem;
   color: var(--text-color-light);
+  margin-left: 0.5rem;
 }
 
 .points-price {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
+  font-size: 1.5rem;
+  color: var(--text-color);
   margin-bottom: 1rem;
 }
 
-.points-price .currency {
-  font-size: 1.25rem;
-  color: var(--text-color);
-}
-
-.points-price .amount {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.package-desc {
-  font-size: 0.875rem;
+.points-desc {
   color: var(--text-color-light);
   margin-bottom: 1.5rem;
   min-height: 2.5em;
@@ -623,128 +476,227 @@ const getBenefitDetails = (key) => {
 
 .purchase-btn {
   width: 100%;
-  height: 40px;
-  
-  &.glow {
-    box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.3);
-  }
+  height: 44px;
+  border-radius: 22px;
 }
 
-.membership-benefits {
-  h2 {
-    text-align: center;
-    font-size: 1.5rem;
-    margin-bottom: 2rem;
-    color: var(--text-color);
-  }
+.purchase-btn.glow {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  box-shadow: 0 4px 15px rgba(var(--primary-color-rgb), 0.3);
+}
+
+/* 会员特权说明 */
+.benefits-section {
+  padding: 4rem 0;
 }
 
 .benefits-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 2rem;
-  margin-top: 2rem;
 }
 
 .benefit-card {
+  background: var(--card-background);
+  border-radius: 1.5rem;
   padding: 2rem;
   transition: transform 0.3s ease;
+  border: 1px solid var(--border-color);
+}
   
-  &:hover {
-    transform: translateY(-4px);
+.benefit-card:hover {
+  transform: translateY(-8px);
   }
   
-  .el-icon {
-    font-size: 2rem;
+.benefit-icon {
+  font-size: 2.5rem;
     color: var(--primary-color);
-    margin-bottom: 1rem;
-  }
-  
-  h3 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-    color: var(--text-color);
-  }
-  
-  p {
-    color: var(--text-color-light);
-    margin-bottom: 1rem;
-  }
+  margin-bottom: 1.5rem;
 }
 
-.benefit-details {
-  list-style-type: none;
-  padding-left: 0;
-  margin-top: 1rem;
+.benefit-card h3 {
+  font-size: 1.5rem;
+  color: var(--text-color);
+    margin-bottom: 1rem;
+  }
   
-  li {
+.benefit-card p {
+  color: var(--text-color-light);
+  margin-bottom: 1.5rem;
+}
+
+.benefit-list {
+  list-style: none;
+  padding: 0;
+}
+
+.benefit-list li {
     display: flex;
     align-items: center;
-    margin-bottom: 0.5rem;
-    color: var(--text-color-light);
+  margin-bottom: 0.75rem;
+  color: var(--text-color);
+}
     
-    &:before {
+.benefit-list li::before {
       content: "•";
       color: var(--primary-color);
-      margin-right: 0.5rem;
-    }
-  }
+  margin-right: 0.75rem;
+  font-size: 1.2rem;
 }
 
-@media (max-width: 1024px) {
-  .pricing-plans,
-  .benefits-grid {
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .pricing-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .plan-card.special {
-    grid-column: span 2;
-    transform: none;
+  .points-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  .pricing-plans,
-  .points-packages,
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  
+  .pricing-grid,
+  .points-grid,
   .benefits-grid {
     grid-template-columns: 1fr;
   }
   
-  .plan-card.featured,
-  .plan-card.special {
+  .plan-card.popular {
     transform: none;
   }
   
-  .plan-card.special {
-    grid-column: span 1;
+  .points-section {
+    margin: 2rem 0;
+    padding: 2rem 0;
   }
 }
 
-.glass-card {
-  background: var(--glass-background);
-  backdrop-filter: var(--glass-backdrop-filter);
-  border: var(--glass-border);
+/* 暗色主题适配 */
+:root[data-theme="dark"] {
+  --card-background: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+.login-prompt {
+  margin-top: 2rem;
+  padding: 2rem;
+  text-align: center;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 1rem;
-  box-shadow: var(--shadow-lg);
 }
 
-.plan-card.special {
-  background: linear-gradient(135deg,
-    rgba(var(--primary-color-rgb), 0.1),
-    rgba(var(--accent-color-rgb), 0.1)
-  );
-  border: 2px solid var(--primary-color);
-  transform: scale(1.05);
-}
-
-.special-btn {
-  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+.login-prompt :deep(.el-alert) {
+  background: transparent;
   border: none;
-  box-shadow: 0 4px 20px rgba(var(--primary-color-rgb), 0.3);
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 24px rgba(var(--primary-color-rgb), 0.4);
+  padding: 0;
+  margin-bottom: 1.5rem;
+}
+
+.login-prompt :deep(.el-alert__title) {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.login-prompt :deep(.el-alert__description) {
+  font-size: 1rem;
+  color: var(--text-color-light);
+  margin-top: 0.5rem;
+}
+
+.login-btn {
+  min-width: 200px;
+  height: 48px;
+  font-size: 1.125rem;
+}
+</style>
+
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { ElMessage } from 'element-plus'
+import { Check, MagicStick, Collection, CopyDocument, Star } from '@element-plus/icons-vue'
+import TheNavbar from '../components/TheNavbar.vue'
+import pricingConfig from '../config/pricing.json'
+import { createCheckoutSession, PRICE_IDS } from '../services/payment'
+import { useUserStore } from '../stores/user'
+
+const router = useRouter()
+const { t } = useI18n()
+const isLoading = ref(false)
+const userStore = useUserStore()
+
+// 处理会员订阅
+const handleSubscribe = async (plan) => {
+  try {
+    if (!userStore.isAuthenticated) {
+      ElMessage.warning(t('payment.errors.unauthorized'))
+      router.push({ 
+        name: `${locale.value}-Auth`,
+        query: { redirect: router.currentRoute.value.fullPath }
+      })
+      return
+    }
+
+    isLoading.value = true
+    const priceId = PRICE_IDS.memberships[plan]
+    const { url } = await createCheckoutSession(priceId, {
+      userId: userStore.currentUser.id,
+      planType: 'subscription',
+      plan
+    })
+    window.location.href = url
+  } catch (error) {
+    ElMessage.error(t('payment.error.checkout'))
+    console.error('Checkout error:', error)
+  } finally {
+    isLoading.value = false
   }
 }
-</style>    
+
+// 处理积分购买
+const handlePurchase = async (pkg, index) => {
+  try {
+    if (!userStore.isAuthenticated) {
+      ElMessage.warning(t('payment.errors.unauthorized'))
+      router.push({ 
+        name: `${locale.value}-Auth`,
+        query: { redirect: router.currentRoute.value.fullPath }
+      })
+      return
+    }
+
+    isLoading.value = true
+    const pointsType = ['small', 'medium', 'large'][index]
+    const priceId = PRICE_IDS.points[pointsType]
+    const { url } = await createCheckoutSession(priceId, {
+      userId: userStore.currentUser.id,
+      planType: 'points',
+      points: pkg.points
+    })
+    window.location.href = url
+  } catch (error) {
+    ElMessage.error(t('payment.error.checkout'))
+    console.error('Points purchase error:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleLoginClick = () => {
+  router.push({ 
+    name: `${locale.value}-Auth`,
+    query: { redirect: router.currentRoute.value.fullPath }
+  })
+}
+</script>    

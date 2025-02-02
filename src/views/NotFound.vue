@@ -1,8 +1,19 @@
 <script setup>
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import TheNavbar from '../components/TheNavbar.vue'
 
 const router = useRouter()
+const { t, locale } = useI18n()
+
+// 生成本地化的路由名称
+const getLocalizedRouteName = (baseName) => {
+  return `${locale.value}-${baseName}`
+}
+
+const goHome = () => {
+  router.push({ name: getLocalizedRouteName('Home') })
+}
 </script>
 
 <template>
@@ -12,16 +23,16 @@ const router = useRouter()
     <div class="container not-found-container">
       <div class="not-found-content">
         <h1 class="error-code">404</h1>
-        <h2 class="error-title">页面未找到</h2>
+        <h2 class="error-title">{{ t('error.notFound.title') }}</h2>
         <p class="error-description">
-          抱歉，您访问的页面不存在或已被移除。
+          {{ t('error.notFound.description') }}
         </p>
         <div class="error-actions">
-          <el-button type="primary" @click="router.push('/')">
-            返回首页
+          <el-button type="primary" @click="goHome">
+            {{ t('error.notFound.backHome') }}
           </el-button>
           <el-button @click="router.back()">
-            返回上一页
+            {{ t('error.notFound.backPrev') }}
           </el-button>
         </div>
       </div>

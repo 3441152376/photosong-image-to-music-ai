@@ -9,7 +9,7 @@ import TheFooter from '../components/TheFooter.vue'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const loading = ref(false)
 const featuredWorks = ref([])
 const latestWorks = ref([])
@@ -38,6 +38,26 @@ const resetPerspective = () => {
   perspective.value = { x: 0, y: 0 }
 }
 
+// 添加请求限制和重试逻辑
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1秒延迟
+
+const fetchWithRetry = async (query, retryCount = 0) => {
+  try {
+    if (retryCount >= MAX_RETRIES) {
+      throw new Error('Maximum retry attempts reached')
+    }
+    
+    return await query.find()
+  } catch (error) {
+    if (error.code === 429) { // Too Many Requests
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)))
+      return fetchWithRetry(query, retryCount + 1)
+    }
+    throw error
+  }
+}
+
 // 获取精选作品
 const fetchFeaturedWorks = async () => {
   loading.value = true
@@ -47,8 +67,8 @@ const fetchFeaturedWorks = async () => {
     query.descending('createdAt')
     query.include('user')
     query.limit(6)
-    const results = await query.find()
     
+    const results = await fetchWithRetry(query)
     featuredWorks.value = results.map(work => ({
       id: work.id,
       title: work.get('title') || t('home.works.untitledWork'),
@@ -70,6 +90,7 @@ const fetchFeaturedWorks = async () => {
     }))
   } catch (error) {
     console.error('Error fetching featured works:', error)
+    ElMessage.error(t('errors.fetchWorks'))
   } finally {
     loading.value = false
   }
@@ -83,7 +104,8 @@ const fetchLatestWorks = async () => {
     query.include('user')
     query.descending('createdAt')
     query.limit(8)
-    const works = await query.find()
+    
+    const works = await fetchWithRetry(query)
     latestWorks.value = works.map(work => ({
       id: work.id,
       title: work.get('title'),
@@ -119,7 +141,10 @@ const handlePlay = async (work) => {
     }
     
     // 导航到作品详情页
-    await router.push(`/work/${work.id}`)
+    await router.push({ 
+      name: `${locale.value}-WorkDetail`,
+      params: { id: work.id }
+    })
   } catch (error) {
     console.error('Error initializing audio:', error)
     ElMessage.error(t('errors.audioInit'))
@@ -128,11 +153,11 @@ const handlePlay = async (work) => {
 
 // 跳转到创作页面
 const goToCreate = () => {
-  router.push('/create')
+  router.push({ name: `${locale.value}-Create` })
 }
 
 const goToCommunity = () => {
-  router.push('/community')
+  router.push({ name: `${locale.value}-Community` })
 }
 
 const testimonials = [
@@ -267,13 +292,25 @@ const handleParallax = (e) => {
   })
 }
 
-// 获取用户头像
+// 添加图片加载优化
+const optimizeImageUrl = (url) => {
+  if (!url) return '/default-image.png'
+  
+  // 如果是 LeanCloud 文件 URL，添加 no-cookie 参数
+  if (url.includes('lc-') && url.includes('lcfile.com')) {
+    return `${url}${url.includes('?') ? '&' : '?'}no-cookie=1`
+  }
+  
+  return url
+}
+
+// 修改图片 URL 处理
 const getAvatarUrl = (user) => {
   const avatar = user.avatar
   if (avatar instanceof AV.File) {
-    return avatar.url()
+    return optimizeImageUrl(avatar.url())
   }
-  return avatar || '/default-avatar.png'
+  return optimizeImageUrl(avatar) || '/default-avatar.png'
 }
 
 onMounted(() => {
@@ -460,7 +497,7 @@ const communityPosts = ref([
         <p class="section-description">{{ t('home.howItWorks.description') }}</p>
       </div>
       
-      <div class="steps-grid" role="list" aria-label="{{ t('home.howItWorks.title') }}">
+      <div class="steps-grid" :aria-label="t('home.howItWorks.title')">
         <div 
           v-for="step in steps" 
           :key="step.number"
@@ -495,7 +532,7 @@ const communityPosts = ref([
         <p class="section-description">{{ t('home.useCases.description') }}</p>
       </div>
       
-      <div class="cases-grid" role="list" aria-label="{{ t('home.useCases.title') }}">
+      <div class="cases-grid" :aria-label="t('home.useCases.title')">
         <div 
           v-for="(useCase, index) in useCases" 
           :key="useCase.title"
@@ -536,10 +573,11 @@ const communityPosts = ref([
         >
           <div class="work-media">
             <img 
-              :src="work.imageUrl" 
+              :src="optimizeImageUrl(work.imageUrl)" 
               :alt="work.title || t('workDetail.untitledWork')"
               class="work-image"
               loading="lazy"
+              crossorigin="anonymous"
             >
             <div class="work-overlay">
               <div class="work-status" v-if="work.status !== 'completed'" aria-live="polite">
@@ -621,8 +659,9 @@ const communityPosts = ref([
           <div class="testimonial-author">
             <el-avatar 
               :size="48" 
-              :src="testimonial.avatar"
+              :src="optimizeImageUrl(testimonial.avatar)"
               :alt="testimonial.author"
+              crossorigin="anonymous"
             />
             <div class="author-info">
               <h4>{{ testimonial.author }}</h4>
@@ -679,7 +718,13 @@ const communityPosts = ref([
                rel="noopener noreferrer"
                class="news-card"
             >
-              <img :src="news.image" :alt="news.title" class="news-image">
+              <img 
+                :src="optimizeImageUrl(news.image)" 
+                :alt="news.title" 
+                class="news-image"
+                loading="lazy"
+                crossorigin="anonymous"
+              >
               <div class="news-content">
                 <h4>{{ news.title }}</h4>
                 <p>{{ news.description }}</p>
@@ -703,7 +748,13 @@ const communityPosts = ref([
                rel="noopener noreferrer"
                class="news-card"
             >
-              <img :src="post.image" :alt="post.title" class="news-image">
+              <img 
+                :src="optimizeImageUrl(post.image)" 
+                :alt="post.title" 
+                class="news-image"
+                loading="lazy"
+                crossorigin="anonymous"
+              >
               <div class="news-content">
                 <h4>{{ post.title }}</h4>
                 <p>{{ post.description }}</p>

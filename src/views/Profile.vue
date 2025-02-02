@@ -20,6 +20,7 @@ const checkIntervals = ref({})
 const newAvatarFile = ref(null)
 const avatarPreview = ref(null)
 const userPoints = ref(0)
+const locale = ref(useI18n().locale)
 
 const form = ref({
   username: userStore.currentUser?.username || '',
@@ -379,11 +380,10 @@ const handleRefresh = async () => {
 }
 
 const handleWorkClick = (work) => {
-  if (work.status !== 'completed') {
-    ElMessage.warning('作品尚未生成完成｜The work has not been generated yet')
-    return
-  }
-  router.push(`/work/${work.id}`)
+  router.push({
+    name: `${locale.value}-WorkDetail`,
+    params: { id: work.id }
+  })
 }
 
 // 添加获取用户积分的函数

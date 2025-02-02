@@ -9,7 +9,7 @@ import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const userStore = useUserStore()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const mobileMenuOpen = ref(false)
 
@@ -38,10 +38,15 @@ const handleLogout = async () => {
   try {
     await userStore.logout()
     ElMessage.success(t('logout.success'))
-    router.push('/')
+    router.push({ name: getLocalizedRouteName('Home') })
   } catch (error) {
     ElMessage.error(t('logout.error'))
   }
+}
+
+// 生成本地化的路由名称
+const getLocalizedRouteName = (baseName) => {
+  return `${locale.value}-${baseName}`
 }
 
 </script>
@@ -49,27 +54,27 @@ const handleLogout = async () => {
 <template>
   <nav class="navbar">
     <div class="navbar-container">
-      <router-link to="/" class="navbar-brand">
+      <router-link :to="{ name: getLocalizedRouteName('Home') }" class="navbar-brand">
         <TheLogo />
       </router-link>
 
       <!-- Desktop Navigation -->
       <div class="nav-links desktop">
-        <router-link to="/" @click="closeMobileMenu">{{ t('nav.home') }}</router-link>
+        <router-link :to="{ name: getLocalizedRouteName('Home') }" @click="closeMobileMenu">{{ t('nav.home') }}</router-link>
         <router-link 
           v-if="isLoggedIn" 
-          to="/create" 
+          :to="{ name: getLocalizedRouteName('Create') }" 
           @click="closeMobileMenu"
         >{{ t('nav.create') }}</router-link>
-        <router-link to="/community" @click="closeMobileMenu">{{ t('nav.community') }}</router-link>
-        <router-link to="/pricing" @click="closeMobileMenu">{{ t('nav.pricing') }}</router-link>
+        <router-link :to="{ name: getLocalizedRouteName('Community') }" @click="closeMobileMenu">{{ t('nav.community') }}</router-link>
+        <router-link :to="{ name: getLocalizedRouteName('Pricing') }" @click="closeMobileMenu">{{ t('nav.pricing') }}</router-link>
       </div>
 
       <div class="nav-auth desktop">
         <LanguageSwitcher />
         <template v-if="isLoggedIn">
           <router-link 
-            to="/profile" 
+            :to="{ name: getLocalizedRouteName('Profile') }" 
             class="avatar-link"
             @click="closeMobileMenu"
           >
@@ -81,7 +86,7 @@ const handleLogout = async () => {
         </template>
         <template v-else>
           <router-link 
-            to="/auth" 
+            :to="{ name: getLocalizedRouteName('Auth') }" 
             class="btn btn-primary"
             @click="closeMobileMenu"
           >{{ t('nav.login') }} / {{ t('nav.register') }}</router-link>
@@ -103,21 +108,21 @@ const handleLogout = async () => {
         v-show="mobileMenuOpen" 
         class="mobile-menu"
       >
-        <router-link to="/" @click="closeMobileMenu">{{ t('nav.home') }}</router-link>
+        <router-link :to="{ name: getLocalizedRouteName('Home') }" @click="closeMobileMenu">{{ t('nav.home') }}</router-link>
         <router-link 
           v-if="isLoggedIn" 
-          to="/create" 
+          :to="{ name: getLocalizedRouteName('Create') }" 
           @click="closeMobileMenu"
         >{{ t('nav.create') }}</router-link>
-        <router-link to="/community" @click="closeMobileMenu">{{ t('nav.community') }}</router-link>
-        <router-link to="/pricing" @click="closeMobileMenu">{{ t('nav.pricing') }}</router-link>
+        <router-link :to="{ name: getLocalizedRouteName('Community') }" @click="closeMobileMenu">{{ t('nav.community') }}</router-link>
+        <router-link :to="{ name: getLocalizedRouteName('Pricing') }" @click="closeMobileMenu">{{ t('nav.pricing') }}</router-link>
         
         <template v-if="isLoggedIn">
-          <router-link to="/profile" @click="closeMobileMenu">{{ t('nav.profile') }}</router-link>
+          <router-link :to="{ name: getLocalizedRouteName('Profile') }" @click="closeMobileMenu">{{ t('nav.profile') }}</router-link>
           <a href="#" @click.prevent="handleLogout">{{ t('nav.logout') }}</a>
         </template>
         <template v-else>
-          <router-link to="/auth" @click="closeMobileMenu">{{ t('nav.login') }} / {{ t('nav.register') }}</router-link>
+          <router-link :to="{ name: getLocalizedRouteName('Auth') }" @click="closeMobileMenu">{{ t('nav.login') }} / {{ t('nav.register') }}</router-link>
         </template>
         <LanguageSwitcher />
       </div>

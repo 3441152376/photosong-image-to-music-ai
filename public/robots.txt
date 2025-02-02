@@ -1,45 +1,147 @@
-# Global rules
+# www.robotstxt.org
+
 User-agent: *
 Allow: /
-Allow: /community
-Allow: /pricing
-Allow: /work/
-Allow: /sitemap.xml
-Allow: /works-sitemap.xml
-Disallow: /auth
-Disallow: /create
-Disallow: /profile
-Disallow: /reset-password
-Disallow: /api/
+
+# 禁止访问私有页面和敏感内容
 Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /reset-password/
+Disallow: /profile/
+Disallow: /user/
+Disallow: /internal/
 Disallow: /*.json$
 Disallow: /*?*
+Disallow: /*utm_*
+Disallow: /*fbclid
+Disallow: /*gclid
+Disallow: /*/print$
+Disallow: /*/pdf$
 
-# Allow language-specific paths
+# 允许访问静态资源和内容页面
+Allow: /static/
+Allow: /assets/
+Allow: /images/
+Allow: /fonts/
+Allow: /community/
+Allow: /pricing/
+Allow: /work/
+Allow: /blog/
+Allow: /features/
+Allow: /about/
+Allow: /faq/
+Allow: /tutorial/
+Allow: /*.html$
+Allow: /*.htm$
+Allow: /*.xml$
+Allow: /*.txt$
+Allow: /sitemap*.xml$
+
+# 语言版本
+Allow: /zh/
 Allow: /en/
 Allow: /ru/
-Allow: /zh/
+Allow: /x-default/
 
-# Sitemaps
+# 站点地图
 Sitemap: https://photosong.com/sitemap.xml
-Sitemap: https://photosong.com/works-sitemap.xml
+Sitemap: https://photosong.com/sitemap-main.xml
+Sitemap: https://photosong.com/sitemap-works.xml
+Sitemap: https://photosong.com/news-sitemap.xml
 
-# Crawl-delay
-Crawl-delay: 5
-
-# Specific rules for major search engines
+# Google 爬虫
 User-agent: Googlebot
 Crawl-delay: 1
+Allow: /*.js$
+Allow: /*.css$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.gif$
+Allow: /*.svg$
+Allow: /*.ico$
+Allow: /*.woff2$
 
+# Google 图片爬虫
+User-agent: Googlebot-Image
+Allow: /images/
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.gif$
+Allow: /*.png$
+Allow: /*.webp$
+Allow: /*.svg$
+
+# Google 移动端爬虫
+User-agent: Googlebot-Mobile
+Allow: /
+Crawl-delay: 1
+
+# Bing 爬虫
 User-agent: Bingbot
 Crawl-delay: 2
+Allow: /*.js$
+Allow: /*.css$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.gif$
+Allow: /*.svg$
+Allow: /*.ico$
+Allow: /*.woff2$
 
+# Yandex 爬虫
 User-agent: Yandexbot
 Crawl-delay: 2
+Allow: /*.js$
+Allow: /*.css$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.gif$
+Allow: /*.svg$
+Allow: /*.ico$
+Allow: /*.woff2$
 
-# Block certain bots
+# Baidu 爬虫
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 2
+
+# 社交媒体爬虫
+User-agent: Twitterbot
+Allow: /
+Allow: /images/
+Allow: /*.jpg$
+Allow: /*.png$
+Allow: /*.gif$
+
+User-agent: facebookexternalhit
+Allow: /
+Allow: /images/
+Allow: /*.jpg$
+Allow: /*.png$
+Allow: /*.gif$
+
+# 屏蔽特定爬虫
 User-agent: AhrefsBot
 Disallow: /
 
 User-agent: SemrushBot
-Disallow: / 
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: Rogerbot
+Disallow: /
+
+User-agent: Exabot
+Disallow: /
+
+# URL 参数清理
+Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content
+Clean-param: fbclid&gclid&_ga&_gl&ref&source&from&via
+Clean-param: session_id&token&auth
+Clean-param: lang&locale 

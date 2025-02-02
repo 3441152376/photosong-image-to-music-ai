@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import AV from 'leancloud-storage'
 
 export const useUserStore = defineStore('user', () => {
@@ -7,6 +7,15 @@ export const useUserStore = defineStore('user', () => {
   const loading = ref(false)
   const error = ref(null)
   const initialized = ref(false)
+
+  // 计算属性：用户是否已认证
+  const isAuthenticated = computed(() => !!currentUser.value)
+  const isVIP = computed(() => {
+    if (!currentUser.value) return false
+    const endDate = currentUser.value.membershipEndDate
+    if (!endDate) return false
+    return new Date(endDate) > new Date()
+  })
 
   // 初始化用户状态
   const initializeUser = async () => {
@@ -301,6 +310,8 @@ export const useUserStore = defineStore('user', () => {
     loading,
     error,
     initialized,
+    isAuthenticated,
+    isVIP,
     login,
     register,
     logout,

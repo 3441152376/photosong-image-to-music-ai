@@ -1,13 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import TheNavbar from '../components/TheNavbar.vue'
 import AV from 'leancloud-storage'
 import { ElMessage } from 'element-plus'
+import SeoMeta from '../components/SEOMeta.vue'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const loading = ref(false)
 const works = ref([])
 const currentPage = ref(1)
@@ -108,6 +109,13 @@ const handlePlay = async (work) => {
   }
 }
 
+const handleWorkClick = (work) => {
+  router.push({
+    name: `${locale.value}-WorkDetail`,
+    params: { id: work.id }
+  })
+}
+
 onMounted(() => {
   fetchWorks()
 })
@@ -115,6 +123,18 @@ onMounted(() => {
 
 <template>
   <div class="community">
+    <SeoMeta
+      :title="t('community.meta.title')"
+      :description="t('community.meta.description')"
+      :keywords="[
+        'photo music community',
+        'music sharing',
+        'AI music community',
+        'photo song sharing',
+        'AI generated music',
+        'image to music'
+      ]"
+    />
     <TheNavbar />
     
     <div class="container">
@@ -148,7 +168,9 @@ onMounted(() => {
           v-for="work in works" 
           :key="work.id"
           class="work-card glass-card"
-          @click="handlePlay(work)"
+          @click="handleWorkClick(work)"
+          role="button"
+          tabindex="0"
         >
           <div class="work-image">
             <img :src="work.imageUrl" :alt="work.title">

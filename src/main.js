@@ -8,8 +8,10 @@ import App from './App.vue'
 import router from './router'
 import './utils/leancloud'
 import i18n from './i18n'
+import { createHead } from '@unhead/vue'
 
 const app = createApp(App)
+const head = createHead()
 
 // 注册所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
@@ -20,5 +22,6 @@ app.use(createPinia())
 app.use(router)
 app.use(ElementPlus)
 app.use(i18n)
+app.use(head)
 
 app.mount('#app')
