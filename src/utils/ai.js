@@ -5,8 +5,8 @@ const VISION_API_URL = import.meta.env.VITE_OPENAI_API_URL
 const VISION_API_KEY = import.meta.env.VITE_OPENAI_API_KEY
 
 // Suno Music API 配置 
-const SUNO_API_URL = import.meta.env.VITE_SUNO_API_URL
-const SUNO_API_KEY = import.meta.env.VITE_SUNO_API_KEY
+const SUNO_API_URL = 'https://usa.blueshirtmap.com/suno/submit/music'
+const SUNO_API_KEY = 'sk-Ym3tLje1OT7gWnMz1kYIPKFNKIafSq2hPiFLevB9qQEK3Q5r'
 
 // 使用 GPT-4 Vision 分析图片
 export async function analyzeImageWithVision(imageBase64) {
@@ -185,7 +185,7 @@ export async function generateMusic(musicParams) {
 // 查询音乐生成任务状态
 export async function checkMusicTask(taskId) {
   try {
-    const response = await fetch(`${SUNO_API_URL.replace('/submit/music', '/fetch')}`, {
+    const response = await fetch('https://usa.blueshirtmap.com/suno/fetch', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
