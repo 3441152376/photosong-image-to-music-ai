@@ -236,13 +236,13 @@ const handleImageUpload = async (file) => {
   
   // 检查文件类型
   if (!['image/jpeg', 'image/png', 'image/jpg'].includes(rawFile.type)) {
-    ElMessage.warning('请上传 jpg 或 png 格式的图片')
+    ElMessage.warning(t('create.upload.invalidFormat'))
     return
   }
   
-  // 检查文件大小（5MB）
-  if (rawFile.size > 5 * 1024 * 1024) {
-    ElMessage.warning('图片大小不能超过 5MB')
+  // 检查文件大小（25MB）
+  if (rawFile.size > 25 * 1024 * 1024) {
+    ElMessage.warning(t('create.upload.maxSize'))
     return
   }
 
@@ -250,7 +250,7 @@ const handleImageUpload = async (file) => {
   if (!await hasEnoughPoints(POINTS_CONFIG.CREATE_MUSIC)) {
     ElMessage({
       type: 'warning',
-      message: `创建音乐需要 ${POINTS_CONFIG.CREATE_MUSIC} 积分，当前积分不足`,
+      message: t('points.insufficient', { points: POINTS_CONFIG.CREATE_MUSIC }),
       duration: 5000,
       showClose: true,
       customClass: 'points-warning'
@@ -314,6 +314,15 @@ async function startMusicGeneration() {
     generatingMusic.value = true
     errorMessage.value = ''
     
+    // 验证必需的参数
+    if (!selectedStyle.value) {
+      throw new Error('请选择音乐风格')
+    }
+
+    if (!title.value) {
+      throw new Error('请输入作品标题')
+    }
+    
     // 将图片转换为 base64
     const reader = new FileReader()
     const base64Promise = new Promise((resolve) => {
@@ -327,9 +336,27 @@ async function startMusicGeneration() {
     
     // 使用 GPT-4 Vision 分析图片
     const visionResult = await analyzeImageWithVision(imageBase64)
+    console.log('Vision Analysis Result:', visionResult)
+    
+    // 构建音乐生成参数
+    const musicParams = {
+      title: title.value,
+      tags: selectedStyle.value,
+      generation_type: 'TEXT',
+      prompt: visionResult.prompt || lyrics.value || '',
+      negative_tags: visionResult.negative_tags || '',
+      mv: 'chirp-v3-5'
+    }
+    
+    console.log('Music Generation Params:', musicParams)
     
     // 使用 Suno 生成音乐
-    currentTaskId.value = await generateMusic(visionResult)
+    currentTaskId.value = await generateMusic(musicParams)
+    console.log('Generated Task ID:', currentTaskId.value)
+    
+    if (!currentTaskId.value) {
+      throw new Error('No task ID returned')
+    }
     
     // 开始轮询任务状态
     await pollMusicTask()
@@ -362,6 +389,11 @@ async function pollMusicTask() {
     
     if (result.status === 'SUCCESS') {
       musicUrl.value = result.data[0].audio_url
+      
+      // 跳转到用户个人页面
+      router.push({ 
+        name: `${locale.value}-Profile`
+      })
     } else if (result.status === 'FAILED') {
       throw new Error('Music generation failed')
     } else {
@@ -404,7 +436,10 @@ const handlePlay = async () => {
   if (!isAudioInitialized.value) {
     isAudioInitialized.value = await initAudioContext()
   }
-  if (!isAudioInitialized.value) return
+  if (!isAudioInitialized.value) {
+    ElMessage.error(t('create.errors.audioInit'))
+    return
+  }
   
   // 其他播放逻辑...
 }
@@ -533,24 +568,44 @@ const checkTaskStatus = async (taskId, workId) => {
 
 // 修改生成歌词的函数
 const generateLyrics = async () => {
-  if (!imageUrl.value) {
-    ElMessage.warning('请先上传图片')
-    return
-  }
-
+  // 检查所有必填选项
   if (!selectedStyle.value) {
-    ElMessage.warning('请选择音乐风格')
+    ElMessage.warning(t('create.errors.styleRequired'))
     return
   }
 
-  if (!selectedLanguages.value.length) {
-    ElMessage.warning('请至少选择一种语言')
+  if (!title.value.trim()) {
+    ElMessage.warning(t('create.errors.titleRequired'))
+    return
+  }
+
+  if (selectedLanguages.value.length === 0) {
+    ElMessage.warning(t('create.errors.languageRequired'))
+    return
+  }
+
+  if (!selectedLength.value) {
+    ElMessage.warning(t('create.errors.lengthRequired'))
+    return
+  }
+
+  if (!selectedRelevance.value) {
+    ElMessage.warning(t('create.errors.relevanceRequired'))
     return
   }
 
   try {
     loading.value = true
     currentStep.value = 3
+
+    // 添加终端提示
+    ElMessage({
+      type: 'info',
+      message: t('create.generating.lyrics'),
+      duration: 0,
+      showClose: true,
+      customClass: 'generating-message'
+    })
 
     // 构建提示词
     const prompt = {
@@ -564,8 +619,9 @@ const generateLyrics = async () => {
 3. 歌词要求：
    - 要有完整的主题和情感表达
    - 要有押韵和音乐性
-   - 要有清晰的结构（如：主歌、副歌）
-   - 要与图片的内容和氛围相匹配
+   - 要有清晰的结构（如：主歌、副歌、间奏、尾奏等）
+   - 要与图片的内容和氛围相匹配、歌词不要偏离图片内容
+   - 歌词一定要符合我要求的音乐风格
 请直接返回歌词内容，不要包含任何其他说明文字。`
         },
         {
@@ -603,9 +659,14 @@ const generateLyrics = async () => {
     }
 
     lyrics.value = data.choices[0].message.content.trim()
+    
+    // 关闭所有消息提示
+    ElMessage.closeAll()
     ElMessage.success('歌词生成成功')
     
   } catch (error) {
+    // 关闭所有消息提示
+    ElMessage.closeAll()
     console.error('Generate lyrics failed:', error)
     ElMessage.error(error.message || '生成歌词失败')
   } finally {
@@ -658,7 +719,25 @@ const optimizeLyrics = async () => {
 
 // 修改 handleCreate 函数
 const handleCreate = async () => {
+  // 添加参数检查日志
+  console.log('Create Parameters:', {
+    imageUrl: imageUrl.value,
+    selectedStyle: selectedStyle.value,
+    title: title.value,
+    lyricsLength: lyrics.value?.length,
+    env: {
+      SUNO_API_URL: import.meta.env.VITE_SUNO_API_URL,
+      hasApiKey: !!import.meta.env.VITE_SUNO_API_KEY
+    }
+  })
+
   if (!imageUrl.value || !selectedStyle.value || !title.value || !lyrics.value) {
+    console.warn('Missing required parameters:', {
+      hasImage: !!imageUrl.value,
+      hasStyle: !!selectedStyle.value,
+      hasTitle: !!title.value,
+      hasLyrics: !!lyrics.value
+    })
     ElMessage.warning(t('create.errors.incomplete'))
     return
   }
@@ -667,101 +746,77 @@ const handleCreate = async () => {
     loading.value = true
     currentStep.value = 4
     
-    const selectedStyleObj = styles.find(s => s.value === selectedStyle.value)
-    
     // 构建请求体
     const requestBody = {
-      title: title.value,
-      tags: selectedStyleObj.tags,
+      title: title.value.trim(),
+      tags: Array.isArray(selectedStyle.value) ? selectedStyle.value.join(',') : selectedStyle.value,
       generation_type: 'TEXT',
-      prompt: lyrics.value,
+      prompt: lyrics.value.trim(),
       negative_tags: '',
-      mv: 'chirp-v4'
+      mv: 'chirp-v3-5'
     }
     
-    console.log('Suno API Request:', {
-      url: import.meta.env.VITE_SUNO_API_URL,
-      body: requestBody
+    console.log('Music Generation Request:', {
+      body: requestBody,
+      apiUrl: import.meta.env.VITE_SUNO_API_URL
     })
     
-    const sunoResponse = await fetch(import.meta.env.VITE_SUNO_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUNO_API_KEY}`,
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    })
-
-    let errorText
-    if (!sunoResponse.ok) {
-      try {
-        errorText = await sunoResponse.text()
-        const errorData = JSON.parse(errorText)
-        throw new Error(errorData.error?.message || '音乐生成失败')
-      } catch (parseError) {
-        console.error('Suno API error response:', {
-          status: sunoResponse.status,
-          statusText: sunoResponse.statusText,
-          headers: Object.fromEntries(sunoResponse.headers.entries()),
-          body: errorText,
-          url: import.meta.env.VITE_SUNO_API_URL
-        })
-        throw new Error(`音乐生成失败 (${sunoResponse.status})`)
+    // 使用 generateMusic 函数而不是直接调用 API
+    try {
+      currentTaskId.value = await generateMusic(requestBody)
+      console.log('Generated Task ID:', currentTaskId.value)
+      
+      if (!currentTaskId.value) {
+        console.error('No task ID returned from generateMusic')
+        throw new Error('No task ID returned')
       }
-    }
-
-    const sunoData = await sunoResponse.json()
-    console.log('Suno API response:', sunoData)
-    
-    if (!sunoData.data) {
-      throw new Error(t('create.errors.serverError'))
-    }
-    
-    // 创建新的作品记录
-    const work = new WorkClass()
-    work.set('status', 'generating')
-    work.set('taskId', sunoData.data)
-    work.set('platform', 'suno')
-    work.set('submitTime', new Date())
-    work.set('action', 'MUSIC')
-    work.set('title', title.value)
-    work.set('imageUrl', imageUrl.value)
-    work.set('style', selectedStyle.value)
-    work.set('lyrics', lyrics.value)
-    work.set('user', AV.User.current())
-    work.set('progress', 0)
-    work.set('retryCount', 0)
-    work.set('lastCheckTime', new Date())
-    
-    // 设置 ACL
-    const acl = new AV.ACL()
-    acl.setPublicReadAccess(true)
-    acl.setWriteAccess(AV.User.current(), true)
-    work.setACL(acl)
-    
-    const savedWork = await work.save()
-    
-    // 开始定时检查任务状态
-    checkInterval.value = setInterval(() => {
-      checkTaskStatus(sunoData.data, savedWork.id)
-    }, 10000)
-    
-    ElMessage.success({
-      message: t('create.success.submitted'),
-      duration: 2000
-    })
-    
-    setTimeout(() => {
-      router.push({
-        path: '/profile',
-        query: { 
-          taskId: sunoData.data,
-          highlight: 'true'
-        }
+      
+      // 创建新的作品记录
+      const work = new WorkClass()
+      work.set('status', 'generating')
+      work.set('taskId', currentTaskId.value)
+      work.set('platform', 'suno')
+      work.set('submitTime', new Date())
+      work.set('action', 'MUSIC')
+      work.set('title', title.value)
+      work.set('imageUrl', imageUrl.value)
+      work.set('style', selectedStyle.value)
+      work.set('lyrics', lyrics.value)
+      work.set('user', AV.User.current())
+      work.set('progress', 0)
+      work.set('retryCount', 0)
+      work.set('lastCheckTime', new Date())
+      
+      console.log('Saving work to LeanCloud...')
+      const savedWork = await work.save()
+      console.log('Work saved:', savedWork.id)
+      
+      // 开始定时检查任务状态
+      checkInterval.value = setInterval(() => {
+        checkTaskStatus(currentTaskId.value, savedWork.id)
+      }, 10000)
+      
+      ElMessage.success(t('create.success.submitted'))
+      
+      // 延迟跳转到个人页面
+      setTimeout(() => {
+        router.push({
+          path: '/profile',
+          query: { 
+            taskId: currentTaskId.value,
+            highlight: 'true'
+          }
+        })
+      }, 2000)
+      
+    } catch (error) {
+      console.error('Music generation failed:', {
+        error,
+        requestBody,
+        apiUrl: import.meta.env.VITE_SUNO_API_URL
       })
-    }, 2000)
+      throw error
+    }
     
   } catch (error) {
     console.error('Creation failed:', error)
@@ -1165,7 +1220,7 @@ const selectedRelevance = ref('medium')
                 <h3 class="gradient-text">{{ t('create.title') }}</h3>
                 <el-input
                   v-model="title"
-                  maxlength="10"
+                  maxlength="30"
                   show-word-limit
                   :placeholder="t('create.upload.placeholder')"
                   class="glass-input"
@@ -1204,7 +1259,6 @@ const selectedRelevance = ref('medium')
               type="primary"
               class="create-btn"
               :loading="loading"
-              :disabled="!selectedStyle || !title || selectedLanguages.length === 0"
               @click="generateLyrics"
             >
               {{ t('create.buttons.generate.lyrics') }}
@@ -1758,13 +1812,6 @@ const selectedRelevance = ref('medium')
   
   &:active {
     transform: translateY(0);
-  }
-  
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
   }
 }
 
