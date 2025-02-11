@@ -104,37 +104,42 @@ export async function generateMusic(musicParams) {
   try {
     // 检查环境变量
     if (!SUNO_API_URL || !SUNO_API_KEY) {
-      console.error('Missing required environment variables:', {
+      const error = new Error('API configuration missing')
+      console.error('环境变量缺失:', {
         hasApiUrl: !!SUNO_API_URL,
-        hasApiKey: !!SUNO_API_KEY
+        hasApiKey: !!SUNO_API_KEY,
+        env: process.env.NODE_ENV
       })
-      throw new Error('API configuration missing')
+      throw error
     }
 
     // 验证必需的参数
-    if (!musicParams.title || !musicParams.tags || !musicParams.prompt) {
-      console.error('Missing required parameters:', {
-        hasTitle: !!musicParams.title,
-        hasTags: !!musicParams.tags,
-        hasPrompt: !!musicParams.prompt
+    const requiredParams = ['title', 'tags', 'prompt']
+    const missingParams = requiredParams.filter(param => !musicParams[param])
+    if (missingParams.length > 0) {
+      const error = new Error(`缺少必需的参数: ${missingParams.join(', ')}`)
+      console.error('参数验证失败:', {
+        missingParams,
+        providedParams: Object.keys(musicParams)
       })
-      throw new Error('缺少必需的参数: title, tags, prompt')
+      throw error
     }
 
     // 确保参数格式正确
     const params = {
-      title: musicParams.title,
+      title: musicParams.title.trim(),
       tags: Array.isArray(musicParams.tags) ? musicParams.tags.join(',') : musicParams.tags,
       generation_type: 'TEXT',
-      prompt: musicParams.prompt,
-      negative_tags: musicParams.negative_tags || '',
+      prompt: musicParams.prompt.trim(),
+      negative_tags: (musicParams.negative_tags || '').trim(),
       mv: 'chirp-v4',
-      make_instrumental: musicParams.make_instrumental || false
+      make_instrumental: Boolean(musicParams.make_instrumental)
     }
 
-    console.log('Formatted Suno API Parameters:', {
+    console.log('准备调用 Suno API:', {
       params,
-      apiUrl: SUNO_API_URL
+      apiUrl: SUNO_API_URL,
+      env: process.env.NODE_ENV
     })
 
     // 使用重试机制调用 API
@@ -151,20 +156,30 @@ export async function generateMusic(musicParams) {
 
       if (!response.ok) {
         const errorText = await response.text()
-        let errorData;
+        let errorData
         try {
-          errorData = JSON.parse(errorText);
+          errorData = JSON.parse(errorText)
         } catch (e) {
-          errorData = { message: errorText };
+          errorData = { message: errorText }
         }
         
-        console.error('Suno API Error Response:', {
+        console.error('Suno API 错误响应:', {
           status: response.status,
           statusText: response.statusText,
-          body: errorText,
-          params: params,
-          apiUrl: SUNO_API_URL
+          errorData,
+          params,
+          apiUrl: SUNO_API_URL,
+          env: process.env.NODE_ENV
         })
+        
+        // 处理特定错误码
+        if (response.status === 429) {
+          throw new Error('请求过于频繁，请稍后再试')
+        } else if (response.status === 403) {
+          throw new Error('API 密钥无效或已过期')
+        } else if (response.status === 400) {
+          throw new Error(`请求参数错误: ${errorData.message || '未知错误'}`)
+        }
         
         // 如果是上游错误，抛出特殊错误以触发重试
         if (errorData.code === 'upstream_error') {
@@ -174,13 +189,17 @@ export async function generateMusic(musicParams) {
         throw new Error(`音乐生成请求失败: ${response.status} ${response.statusText}`)
       }
 
-      const data = await response.json()
-      if (data.code !== 'success' || !data.data) {
-        throw new Error(data.message || '音乐生成失败')
+      const responseData = await response.json()
+      if (responseData.code !== 'success' || !responseData.data) {
+        console.error('Suno API 响应格式错误:', {
+          responseData,
+          params
+        })
+        throw new Error(responseData.message || '音乐生成失败')
       }
       
-      return data;
-    });
+      return responseData
+    })
 
     // 保存任务到 LeanCloud
     const MusicTask = AV.Object.extend('MusicTask')
@@ -188,25 +207,36 @@ export async function generateMusic(musicParams) {
     task.set('taskId', data.data)
     task.set('status', 'SUBMITTED')
     task.set('params', params)
+    task.set('env', process.env.NODE_ENV)
     
-    console.log('Saving task to LeanCloud...')
+    console.log('正在保存任务到 LeanCloud...')
     await task.save()
-    console.log('Task saved with ID:', data.data)
+    console.log('任务已保存:', {
+      taskId: data.data,
+      env: process.env.NODE_ENV
+    })
     
-    return data.data // 返回任务ID
+    return data.data
   } catch (error) {
-    console.error('Suno API Error:', {
-      error,
+    console.error('音乐生成失败:', {
+      error: error.message,
       stack: error.stack,
-      apiUrl: SUNO_API_URL
+      params: musicParams,
+      apiUrl: SUNO_API_URL,
+      env: process.env.NODE_ENV
     })
     throw error
   }
 }
 
-// 修改 checkMusicTask 函数也使用重试机制
+// 修改 checkMusicTask 函数
 export async function checkMusicTask(taskId) {
   try {
+    console.log('开始检查任务状态:', {
+      taskId,
+      env: process.env.NODE_ENV
+    })
+
     const result = await retryOperation(async () => {
       const response = await fetch(`${SUNO_API_URL.replace('/submit/music', '/fetch')}`, {
         method: 'POST',
@@ -223,18 +253,26 @@ export async function checkMusicTask(taskId) {
 
       if (!response.ok) {
         const errorText = await response.text()
-        let errorData;
+        let errorData
         try {
-          errorData = JSON.parse(errorText);
+          errorData = JSON.parse(errorText)
         } catch (e) {
-          errorData = { message: errorText };
+          errorData = { message: errorText }
         }
+        
+        console.error('检查任务状态失败:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          taskId,
+          env: process.env.NODE_ENV
+        })
         
         // 处理特定错误码
         if (response.status === 429) {
           throw new Error('请求过于频繁，请稍后再试')
         } else if (response.status === 403) {
-          throw new Error('没有权限执行此操作')
+          throw new Error('API 密钥无效或已过期')
         } else if (response.status === 404) {
           throw new Error('任务不存在')
         }
@@ -244,27 +282,30 @@ export async function checkMusicTask(taskId) {
 
       const data = await response.json()
       if (data.code !== 'success' || !data.data || !data.data[0]) {
+        console.error('任务状态响应格式错误:', {
+          data,
+          taskId
+        })
         throw new Error(data.message || '检查任务状态失败')
       }
       
-      return data.data[0];
-    });
-    
-    // 更新 LeanCloud 中的任务状态
-    const query = new AV.Query('MusicTask')
-    query.equalTo('taskId', taskId)
-    const task = await query.first()
-    if (task) {
-      task.set('status', result.status)
-      if (result.status === 'SUCCESS' && result.data && result.data[0]) {
-        task.set('audioUrl', result.data[0].audio_url)
-      }
-      await task.save()
-    }
-    
+      console.log('任务状态检查结果:', {
+        taskId,
+        status: data.data[0].status,
+        env: process.env.NODE_ENV
+      })
+      
+      return data.data[0]
+    })
+
     return result
   } catch (error) {
-    console.error('Task Check Error:', error)
+    console.error('检查任务状态时发生错误:', {
+      error: error.message,
+      stack: error.stack,
+      taskId,
+      env: process.env.NODE_ENV
+    })
     throw error
   }
 } 
