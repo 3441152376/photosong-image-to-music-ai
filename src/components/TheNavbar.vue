@@ -6,6 +6,8 @@ import { ElMessage } from 'element-plus'
 import TheLogo from './TheLogo.vue'
 import LanguageSwitcher from './LanguageSwitcher.vue'
 import { useI18n } from 'vue-i18n'
+import AV from 'leancloud-storage'
+import { CaretBottom, User, Close } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -17,14 +19,21 @@ const mobileMenuOpen = ref(false)
 const isLoggedIn = computed(() => !!userStore.currentUser)
 const currentUser = computed(() => userStore.currentUser)
 const avatarUrl = computed(() => {
-  const avatar = currentUser.value?.avatar
-  // Handle AV.File object
-  if (avatar && avatar.url) {
-    return avatar.url()
-  }
-  // Handle string URL
-  return avatar || '/default-avatar.png'
+  const user = userStore.currentUser
+  if (!user) return '/src/assets/default-avatar.svg'
+  
+  return user.avatar || '/src/assets/default-avatar.svg'
 })
+
+// 添加用户名计算属性
+const username = computed(() => {
+  const user = userStore.currentUser
+  return user ? user.username : ''
+})
+
+const handleAvatarClick = () => {
+  router.push({ name: getLocalizedRouteName('Profile') })
+}
 
 const closeMobileMenu = () => {
   mobileMenuOpen.value = false
@@ -67,22 +76,20 @@ const getLocalizedRouteName = (baseName) => {
           @click="closeMobileMenu"
         >{{ t('nav.create') }}</router-link>
         <router-link :to="{ name: getLocalizedRouteName('Community') }" @click="closeMobileMenu">{{ t('nav.community') }}</router-link>
+        <router-link :to="{ name: getLocalizedRouteName('Articles') }" @click="closeMobileMenu">{{ t('nav.articles') }}</router-link>
         <router-link :to="{ name: getLocalizedRouteName('Pricing') }" @click="closeMobileMenu">{{ t('nav.pricing') }}</router-link>
       </div>
 
       <div class="nav-auth desktop">
         <LanguageSwitcher />
         <template v-if="isLoggedIn">
-          <router-link 
-            :to="{ name: getLocalizedRouteName('Profile') }" 
-            class="avatar-link"
-            @click="closeMobileMenu"
-          >
+          <div class="user-avatar" @click="handleAvatarClick" role="button" tabindex="0">
             <el-avatar 
               :size="32" 
               :src="avatarUrl"
+              class="avatar"
             />
-          </router-link>
+          </div>
         </template>
         <template v-else>
           <router-link 
@@ -115,6 +122,7 @@ const getLocalizedRouteName = (baseName) => {
           @click="closeMobileMenu"
         >{{ t('nav.create') }}</router-link>
         <router-link :to="{ name: getLocalizedRouteName('Community') }" @click="closeMobileMenu">{{ t('nav.community') }}</router-link>
+        <router-link :to="{ name: getLocalizedRouteName('Articles') }" @click="closeMobileMenu">{{ t('nav.articles') }}</router-link>
         <router-link :to="{ name: getLocalizedRouteName('Pricing') }" @click="closeMobileMenu">{{ t('nav.pricing') }}</router-link>
         
         <template v-if="isLoggedIn">
@@ -137,18 +145,36 @@ const getLocalizedRouteName = (baseName) => {
   left: 0;
   right: 0;
   z-index: 100;
-  background: var(--glass-background);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border-color);
+  padding: 1rem;
+  
+  @media (min-width: 768px) {
+    padding: 1.5rem 2rem;
+    
+    .navbar-container {
+      background: var(--glass-background);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 0.75rem 1.5rem;
+    }
+  }
 }
 
 .navbar-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  
+  @media (max-width: 768px) {
+    margin: 0 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--glass-background);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+  }
 }
 
 .navbar-brand {
@@ -266,13 +292,14 @@ const getLocalizedRouteName = (baseName) => {
     display: flex;
     flex-direction: column;
     position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+    top: calc(100% + 0.5rem);
+    left: 1rem;
+    right: 1rem;
     background: var(--glass-background);
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border-color);
-    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
   }
 
   .mobile-menu a {
@@ -285,6 +312,35 @@ const getLocalizedRouteName = (baseName) => {
   .mobile-menu a:hover,
   .mobile-menu a.router-link-active {
     color: var(--primary-color);
+  }
+}
+
+.user-avatar {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+  
+  .avatar {
+    border: 2px solid transparent;
+    transition: border-color 0.2s ease;
+    
+    &:hover {
+      border-color: var(--el-color-primary);
+    }
+  }
+}
+
+/* 添加内容区域的padding */
+:deep(main), :deep(.main-content) {
+  padding-top: calc(4rem + 16px); /* 导航栏高度 + 额外间距 */
+  
+  @media (min-width: 768px) {
+    padding-top: calc(5rem + 16px);
   }
 }
 </style> 

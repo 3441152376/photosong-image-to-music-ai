@@ -40,7 +40,7 @@ const contactMethods = [
     icon: 'Message',
     title: t('contact.email.title'),
     description: t('contact.email.description'),
-    value: 'support@photosong.com'
+    value: 'wuyanzu@photosong.com'
   },
   {
     icon: 'Service',

@@ -1,0 +1,87 @@
+/* 图片容器基础样式 */
+.lazy-container {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-secondary);
+  border-radius: 8px;
+  will-change: transform; /* 提示浏览器优化变换 */
+  transform: translateZ(0); /* 强制GPU加速 */
+  backface-visibility: hidden; /* 防止闪烁 */
+}
+
+/* 加载状态 */
+.lazy-container.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--surface-secondary) 0%,
+    var(--surface-primary) 50%,
+    var(--surface-secondary) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  will-change: transform; /* 优化动画性能 */
+  transform: translateZ(0);
+}
+
+/* 加载动画 */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 图片样式 */
+.lazy-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  will-change: opacity; /* 优化不透明度动画 */
+  transform: translateZ(0);
+}
+
+/* 加载完成状态 */
+.lazy-container.loaded img {
+  opacity: 1;
+}
+
+/* 错误状态 */
+.lazy-container.error {
+  background: var(--surface-error);
+}
+
+.lazy-container.error::after {
+  content: '加载失败';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text-error);
+  font-size: 0.875rem;
+}
+
+/* 响应式处理 */
+@media (max-width: 768px) {
+  .lazy-container {
+    border-radius: 4px;
+  }
+  
+  /* 移动端优化动画性能 */
+  .lazy-container.loading::before {
+    animation-duration: 2s; /* 降低动画频率 */
+  }
+  
+  .lazy-container img {
+    transition-duration: 0.2s; /* 缩短过渡时间 */
+  }
+} 

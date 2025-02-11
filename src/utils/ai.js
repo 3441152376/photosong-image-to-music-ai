@@ -5,8 +5,24 @@ const VISION_API_URL = import.meta.env.VITE_OPENAI_API_URL
 const VISION_API_KEY = import.meta.env.VITE_OPENAI_API_KEY
 
 // Suno Music API 配置 
-const SUNO_API_URL = 'https://usa.blueshirtmap.com/suno/submit/music'
-const SUNO_API_KEY = 'sk-Ym3tLje1OT7gWnMz1kYIPKFNKIafSq2hPiFLevB9qQEK3Q5r'
+const SUNO_API_URL = import.meta.env.VITE_SUNO_API_URL
+const SUNO_API_KEY = import.meta.env.VITE_SUNO_API_KEY
+
+// 添加请求限制控制
+const MIN_REQUEST_INTERVAL = 5000 // 最小请求间隔为5秒
+const MAX_RETRIES = 3 // 最大重试次数
+const BASE_DELAY = 5000 // 基础延迟时间为5秒
+let lastRequestTime = 0
+
+// 添加延迟函数
+async function waitForNextRequest() {
+  const now = Date.now()
+  const timeToWait = Math.max(0, MIN_REQUEST_INTERVAL - (now - lastRequestTime))
+  if (timeToWait > 0) {
+    await new Promise(resolve => setTimeout(resolve, timeToWait))
+  }
+  lastRequestTime = Date.now()
+}
 
 // 使用 GPT-4 Vision 分析图片
 export async function analyzeImageWithVision(imageBase64) {
@@ -48,16 +64,20 @@ export async function analyzeImageWithVision(imageBase64) {
   }
 }
 
-// 添加重试函数
-async function retryOperation(operation, maxRetries = 3, delay = 2000) {
+// 修改重试函数
+async function retryOperation(operation, maxRetries = MAX_RETRIES) {
   let lastError;
   
   for (let i = 0; i < maxRetries; i++) {
     try {
+      // 等待合适的时间间隔
+      await waitForNextRequest()
+      
+      // 执行操作
       return await operation();
     } catch (error) {
       lastError = error;
-      console.log(`Attempt ${i + 1} failed:`, error);
+      console.log(`Attempt ${i + 1}/${maxRetries} failed:`, error);
       
       // 如果不是上游错误，直接抛出
       if (error.message && !error.message.includes('upstream_error')) {
@@ -69,8 +89,10 @@ async function retryOperation(operation, maxRetries = 3, delay = 2000) {
         throw new Error(`操作失败，已重试 ${maxRetries} 次: ${error.message}`);
       }
       
-      // 等待一段时间后重试
-      await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      // 使用指数退避策略计算下次重试延迟
+      const delay = BASE_DELAY * Math.pow(2, i);
+      console.log(`等待 ${delay/1000} 秒后进行第 ${i + 2} 次重试...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
   
@@ -101,13 +123,13 @@ export async function generateMusic(musicParams) {
 
     // 确保参数格式正确
     const params = {
-      title: musicParams.title.trim(),
-      tags: typeof musicParams.tags === 'string' ? musicParams.tags : (Array.isArray(musicParams.tags) ? musicParams.tags.join(',') : ''),
+      title: musicParams.title,
+      tags: Array.isArray(musicParams.tags) ? musicParams.tags.join(',') : musicParams.tags,
       generation_type: 'TEXT',
-      prompt: typeof musicParams.prompt === 'string' ? musicParams.prompt : JSON.stringify(musicParams.prompt),
+      prompt: musicParams.prompt,
       negative_tags: musicParams.negative_tags || '',
-      mv: 'chirp-v3-5',
-      make_instrumental: Boolean(musicParams.make_instrumental)
+      mv: 'chirp-v4',
+      make_instrumental: musicParams.make_instrumental || false
     }
 
     console.log('Formatted Suno API Parameters:', {
@@ -182,49 +204,65 @@ export async function generateMusic(musicParams) {
   }
 }
 
-// 查询音乐生成任务状态
+// 修改 checkMusicTask 函数也使用重试机制
 export async function checkMusicTask(taskId) {
   try {
-    const response = await fetch('https://usa.blueshirtmap.com/suno/fetch', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUNO_API_KEY}`,
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        task_ids: [taskId]
+    const result = await retryOperation(async () => {
+      const response = await fetch(`${SUNO_API_URL.replace('/submit/music', '/fetch')}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUNO_API_KEY}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          ids: [taskId],
+          action: "MUSIC"
+        })
       })
-    })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Task Check Error Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      })
-      throw new Error(`检查任务状态失败: ${response.status} ${response.statusText}`)
-    }
+      if (!response.ok) {
+        const errorText = await response.text()
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { message: errorText };
+        }
+        
+        // 处理特定错误码
+        if (response.status === 429) {
+          throw new Error('请求过于频繁，请稍后再试')
+        } else if (response.status === 403) {
+          throw new Error('没有权限执行此操作')
+        } else if (response.status === 404) {
+          throw new Error('任务不存在')
+        }
+        
+        throw new Error(`检查任务状态失败: ${response.status} ${response.statusText}`)
+      }
 
-    const data = await response.json()
-    if (data.code !== 'success' || !data.data || !data.data[0]) {
-      throw new Error(data.message || '检查任务状态失败')
-    }
+      const data = await response.json()
+      if (data.code !== 'success' || !data.data || !data.data[0]) {
+        throw new Error(data.message || '检查任务状态失败')
+      }
+      
+      return data.data[0];
+    });
     
     // 更新 LeanCloud 中的任务状态
     const query = new AV.Query('MusicTask')
     query.equalTo('taskId', taskId)
     const task = await query.first()
     if (task) {
-      task.set('status', data.data[0].status)
-      if (data.data[0].status === 'SUCCESS' && data.data[0].data && data.data[0].data[0]) {
-        task.set('audioUrl', data.data[0].data[0].audio_url)
+      task.set('status', result.status)
+      if (result.status === 'SUCCESS' && result.data && result.data[0]) {
+        task.set('audioUrl', result.data[0].audio_url)
       }
       await task.save()
     }
     
-    return data.data[0]
+    return result
   } catch (error) {
     console.error('Task Check Error:', error)
     throw error

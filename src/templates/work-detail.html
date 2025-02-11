@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}} by {{author}} - Photo Song</title>
+    <meta name="description" content="{{description}}">
+    <meta name="keywords" content="{{title}}, {{author}}, photo song, AI music, {{style}}">
+    <meta property="og:title" content="{{title}} by {{author}} - Photo Song">
+    <meta property="og:description" content="{{description}}">
+    <meta property="og:image" content="{{imageUrl}}">
+    <meta property="og:url" content="{{url}}">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="{{url}}">
+    <link rel="stylesheet" href="/assets/styles/main.css">
+</head>
+<body>
+    <main class="work-detail">
+        <article>
+            <header class="work-header">
+                <h1>{{title}}</h1>
+                <div class="author-info">
+                    <a href="/profile/{{authorId}}" class="author-link">
+                        <img src="{{authorAvatar}}" alt="{{author}}'s avatar" class="author-avatar">
+                        <span>{{author}}</span>
+                    </a>
+                    <time datetime="{{createdAt}}">{{createdAtFormatted}}</time>
+                </div>
+            </header>
+
+            <div class="work-content">
+                <div class="work-image">
+                    <img src="{{imageUrl}}" alt="{{title}}">
+                </div>
+                
+                <div class="work-info">
+                    <p class="description">{{description}}</p>
+                    <div class="work-meta">
+                        <div class="style-tag">{{style}}</div>
+                        <div class="stats">
+                            <span class="views">{{views}} views</span>
+                            <span class="likes">{{likes}} likes</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="work-player">
+                    <audio controls>
+                        <source src="{{audioUrl}}" type="audio/mpeg">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            </div>
+        </article>
+
+        <section class="related-works">
+            <h2>More works by {{author}}</h2>
+            <div class="works-grid">
+                {{#relatedWorks}}
+                <div class="work-card">
+                    <img src="{{imageUrl}}" alt="{{title}}">
+                    <h3>{{title}}</h3>
+                    <p>{{description}}</p>
+                </div>
+                {{/relatedWorks}}
+            </div>
+        </section>
+    </main>
+
+    <script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "MusicComposition",
+        "name": "{{title}}",
+        "composer": {
+            "@type": "Person",
+            "name": "{{author}}",
+            "url": "{{authorProfileUrl}}"
+        },
+        "datePublished": "{{createdAt}}",
+        "description": "{{description}}",
+        "image": "{{imageUrl}}",
+        "audio": "{{audioUrl}}",
+        "genre": "{{style}}",
+        "url": "{{url}}"
+    }
+    </script>
+</body>
+</html> 

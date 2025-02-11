@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{username}} - Photo Song</title>
+    <meta name="description" content="{{username}}'s profile and works on Photo Song">
+    <meta name="keywords" content="{{username}}, photo song, music creation, AI music">
+    <meta property="og:title" content="{{username}} - Photo Song">
+    <meta property="og:description" content="{{username}}'s profile and works on Photo Song">
+    <meta property="og:image" content="{{avatar}}">
+    <meta property="og:url" content="{{url}}">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="{{url}}">
+    <link rel="stylesheet" href="/assets/styles/main.css">
+</head>
+<body>
+    <main class="user-profile">
+        <div class="profile-header">
+            <img src="{{avatar}}" alt="{{username}}'s avatar" class="profile-avatar">
+            <h1>{{username}}</h1>
+            <p class="bio">{{bio}}</p>
+        </div>
+
+        <div class="user-works">
+            <h2>{{username}}'s Works</h2>
+            <div class="works-grid">
+                {{#works}}
+                <div class="work-card">
+                    <img src="{{imageUrl}}" alt="{{title}}">
+                    <h3>{{title}}</h3>
+                    <p>{{description}}</p>
+                    <div class="work-meta">
+                        <span class="style">{{style}}</span>
+                        <span class="date">{{createdAt}}</span>
+                    </div>
+                </div>
+                {{/works}}
+            </div>
+        </div>
+    </main>
+
+    <script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "ProfilePage",
+        "mainEntity": {
+            "@type": "Person",
+            "name": "{{username}}",
+            "description": "{{bio}}",
+            "image": "{{avatar}}",
+            "url": "{{url}}"
+        }
+    }
+    </script>
+</body>
+</html> 

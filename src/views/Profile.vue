@@ -1,70 +1,94 @@
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, watch, nextTick } from 'vue'
 import { useUserStore } from '../stores/user'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import TheNavbar from '../components/TheNavbar.vue'
 import AV from 'leancloud-storage'
-import { useRouter } from 'vue-router'
-import { Edit, Upload, Refresh, Star, CaretRight, Loading, Warning, VideoPlay, Menu, Select } from '@element-plus/icons-vue'
+import { useRouter, useRoute } from 'vue-router'
+import { Edit, Upload, Refresh, Star, CaretRight, Loading, Warning, VideoPlay, Menu, Select, Check, Close, User, Calendar, Delete } from '@element-plus/icons-vue'
+import { handlePaymentSuccess } from '@/services/payment'
+import { useHead } from 'unhead'
+import { WorkStatus } from '../utils/workStatusChecker'
+import { contentModeration } from '../middleware/contentModeration'
 
 const userStore = useUserStore()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const loading = ref(false)
 const uploadRef = ref(null)
 const works = ref([])
 const router = useRouter()
+const route = useRoute()
 const isEditing = ref(false)
 const filterStatus = ref('all')
 const checkIntervals = ref({})
 const newAvatarFile = ref(null)
 const avatarPreview = ref(null)
 const userPoints = ref(0)
-const locale = ref(useI18n().locale)
+const showPaymentSuccess = ref(false)
+const paymentResult = ref(null)
+const isEditingUsername = ref(false)
+const tempUsername = ref('')
 
 const form = ref({
-  username: userStore.currentUser?.username || '',
-  email: userStore.currentUser?.email || '',
-  avatar: '',  // We'll handle this with a computed property
-  createdAt: userStore.currentUser?.createdAt || new Date(),
-  points: userStore.currentUser?.points || 0,
-  membershipEndDate: userStore.currentUser?.membershipEndDate || null,
-  oldPassword: '',
-  newPassword: '',
-  confirmPassword: ''
+  username: userStore.currentUser ? userStore.currentUser.username : '',
+  email: userStore.currentUser ? userStore.currentUser.email : '',
+  bio: userStore.currentUser ? userStore.currentUser.bio || '' : '',
+  gender: userStore.currentUser ? userStore.currentUser.gender || 'notSpecified' : 'notSpecified',
+  createdAt: userStore.currentUser ? userStore.currentUser.createdAt : new Date(),
+  points: userStore.currentUser ? userStore.currentUser.points || 0 : 0,
+  membershipEndDate: userStore.currentUser ? userStore.currentUser.membershipEndDate : null
+})
+
+// 添加加载状态管理
+const loadingStates = ref({
+  profile: false,
+  gender: false,
+  avatar: false,
+  works: false
+})
+
+// 添加错误状态管理
+const errors = ref({
+  profile: null,
+  gender: null,
+  avatar: null,
+  works: null
 })
 
 // Add computed property for avatar URL
 const avatarUrl = computed(() => {
-  const avatar = userStore.currentUser?.avatar
-  if (avatar instanceof AV.File) {
-    return avatar.url()
+  const user = userStore.currentUser
+  if (!user) return '/src/assets/default-avatar.svg'
+  return user.avatar || '/src/assets/default-avatar.svg'
+})
+
+const truncatedUsername = computed(() => {
+  const username = form.value.username
+  if (username.length > 10) {
+    return username.slice(0, 10) + '...'
   }
-  return avatar || '/default-avatar.png'
+  return username
 })
 
 // 作品状态选项
-const statusOptions = [
+const statusOptions = computed(() => [
   { value: 'all', label: t('profile.works.filter.all') },
-  { value: 'generating', label: t('profile.works.filter.generating') },
-  { value: 'completed', label: t('profile.works.filter.completed') },
-  { value: 'failed', label: t('profile.works.filter.failed') }
-]
-
-// 计算会员剩余时间
-const membershipDays = computed(() => {
-  if (!form.value.membershipEndDate) return 0
-  const endDate = new Date(form.value.membershipEndDate)
-  const now = new Date()
-  const diffTime = endDate - now
-  return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
-})
+  { value: WorkStatus.GENERATING, label: t('profile.works.status.GENERATING') },
+  { value: WorkStatus.COMPLETED, label: t('profile.works.status.COMPLETED') },
+  { value: WorkStatus.FAILED, label: t('profile.works.status.FAILED') }
+])
 
 // 过滤后的作品列表
 const filteredWorks = computed(() => {
   if (filterStatus.value === 'all') return works.value
-  return works.value.filter(work => work.status === filterStatus.value)
+  return works.value.filter(work => work.status.toUpperCase() === filterStatus.value)
 })
+
+// 已完成作品数量
+const completedWorksCount = computed(() => 
+  works.value.filter(w => w.status.toUpperCase() === WorkStatus.COMPLETED).length
+)
 
 // 检查任务状态
 const checkTaskStatus = async (taskId, workId) => {
@@ -82,7 +106,6 @@ const checkTaskStatus = async (taskId, workId) => {
     }
 
     const data = await response.json()
-    console.log('Task status:', data)
 
     // 获取作品记录
     const work = AV.Object.createWithoutData('Work', workId)
@@ -91,7 +114,7 @@ const checkTaskStatus = async (taskId, workId) => {
     if (data.code === 'success' && data.data) {
       if (data.data.status === 'SUCCESS') {
         // 更新作品状态为已完成
-        work.set('status', 'completed')
+        work.set('status', WorkStatus.COMPLETED)
         if (data.data.data && data.data.data.length > 0) {
           const musicData = data.data.data[0]
           work.set('audioUrl', musicData.audio_url)
@@ -113,7 +136,7 @@ const checkTaskStatus = async (taskId, workId) => {
         await fetchWorks()
       } else if (data.data.status === 'FAILED') {
         // 更新作品状态为失败
-        work.set('status', 'failed')
+        work.set('status', WorkStatus.FAILED)
         work.set('error', data.data.fail_reason || '音乐生成失败')
         work.set('progress', 0)
         
@@ -127,6 +150,7 @@ const checkTaskStatus = async (taskId, workId) => {
         await fetchWorks()
       } else if (data.data.status === 'IN_PROGRESS') {
         // 更新进度
+        work.set('status', WorkStatus.GENERATING)
         const progress = parseInt(data.data.progress) || 0
         work.set('progress', progress)
         work.set('lastCheckTime', new Date())
@@ -140,7 +164,6 @@ const checkTaskStatus = async (taskId, workId) => {
     await work.save()
     
   } catch (error) {
-    console.error('Check task status failed:', error)
     // 增加重试次数
     const work = AV.Object.createWithoutData('Work', workId)
     const retryCount = work.get('retryCount') || 0
@@ -148,7 +171,7 @@ const checkTaskStatus = async (taskId, workId) => {
     
     // 如果重试次数超过限制，标记为失败
     if (retryCount >= 5) {
-      work.set('status', 'failed')
+      work.set('status', WorkStatus.FAILED)
       work.set('error', '检查任务状态失败次数过多')
       
       // 清除定时器
@@ -181,64 +204,42 @@ const retryWithDelay = async (fn, retries = 3, delay = 1000) => {
 // 获取用户作品
 const fetchWorks = async () => {
   try {
-    loading.value = true
     const query = new AV.Query('Work')
     query.equalTo('user', AV.User.current())
+    query.include('user')
     query.descending('createdAt')
-    query.limit(1000)
-    
     const results = await retryWithDelay(() => query.find())
     
-    // 只在作品没有 ACL 时设置
-    const worksToUpdate = results.filter(work => !work.getACL())
-    
-    // 分批处理 ACL 更新，每批 10 个
-    for (let i = 0; i < worksToUpdate.length; i += 10) {
-      const batch = worksToUpdate.slice(i, i + 10)
-      const updatePromises = batch.map(async (work) => {
-        const acl = new AV.ACL()
-        acl.setPublicReadAccess(true)
-        acl.setWriteAccess(work.get('user'), true)
-        work.setACL(acl)
-        return retryWithDelay(() => work.save(null, { fetchWhenSave: true }))
-      })
-      
-      await Promise.all(updatePromises)
-      
-      // 如果还有更多批次，等待一秒再继续
-      if (i + 10 < worksToUpdate.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-    }
-    
-    works.value = results.map(work => ({
-      id: work.id,
-      title: work.get('title') || t('profile.works.untitledWork'),
-      imageUrl: work.get('imageUrl') || '',
-      status: work.get('status') || 'draft',
-      taskId: work.get('taskId'),
-      submitTime: work.get('submitTime'),
-      progress: work.get('progress') || 0,
-      audioUrl: work.get('audioUrl') || '',
-      style: work.get('style') || '',
-      platform: work.get('platform') || 'suno',
-      error: work.get('error'),
-      createdAt: work.createdAt
-    }))
-    
-    // 为正在生成的作品设置状态检查
-    works.value.forEach(work => {
-      if (work.status === 'generating' && work.taskId && !checkIntervals.value[work.id]) {
-        checkIntervals.value[work.id] = setInterval(() => {
-          checkTaskStatus(work.taskId, work.id)
-        }, 10000)
+    // 处理作品数据
+    works.value = results.map(work => {
+      const status = (work.get('status') || 'completed').toUpperCase()
+      return {
+        id: work.id,
+        title: work.get('title') || t('profile.works.untitledWork'),
+        imageUrl: work.get('imageUrl') || '',
+        audioUrl: work.get('audioUrl') || '',
+        style: work.get('style') || '',
+        status: status,
+        progress: work.get('progress') || 0,
+        createdAt: work.createdAt,
+        user: work.get('user'),
+        error: work.get('error'),
+        taskId: work.get('taskId')
       }
     })
+    
+    // 检查是否有未完成的作品
+    const pendingWorks = works.value.filter(work => 
+      work.status === WorkStatus.GENERATING || 
+      work.status === WorkStatus.PENDING
+    )
+    
+    // 如果有未完成的作品，自动刷新状态
+    if (pendingWorks.length > 0) {
+      await handleRefresh()
+    }
   } catch (error) {
-    console.error('Fetch works failed:', error)
-    ElMessage.error(t('profile.works.error.loadFailed'))
-  } finally {
-    loading.value = false
+    ElMessage.error(t('profile.works.fetchError'))
   }
 }
 
@@ -249,7 +250,6 @@ const handleLogout = async () => {
     ElMessage.success(t('profile.user.logout.success'))
     router.push('/')
   } catch (error) {
-    console.error('Logout failed:', error)
     ElMessage.error(t('profile.user.logout.failed'))
   }
 }
@@ -265,89 +265,151 @@ const triggerAvatarUpload = () => {
 
 // 处理头像上传
 const handleAvatarUpload = async (event) => {
-  const file = event.target.files[0]
-  if (!file) return
-  
-  if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-    ElMessage.error(t('profile.user.avatar.error.format'))
-    return
-  }
-  
-  if (file.size > 2 * 1024 * 1024) {
-    ElMessage.error(t('profile.user.avatar.error.size'))
-    return
-  }
-  
   try {
-    loading.value = true
-    newAvatarFile.value = file
+    loadingStates.value.avatar = true
+    errors.value.avatar = null
     
-    // 创建本地预览
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      avatarPreview.value = e.target.result
+    const file = event.target.files[0]
+    if (!file) return
+    
+    // 图片审核
+    const imageResult = await contentModeration.moderateImage(file)
+    if (!imageResult.isValid) {
+      throw new Error(imageResult.error)
     }
-    reader.readAsDataURL(file)
     
-    ElMessage.success('头像已选择，点击保存生效')
+    // 获取当前用户
+    const user = AV.User.current()
+    if (!user) {
+      throw new Error(t('profile.error.userNotFound'))
+    }
+    
+    // 更新头像
+    user.set('avatar', imageResult.file)
+    await user.save()
+    
+    // 更新状态管理
+    await userStore.fetchCurrentUser()
+    
+    ElMessage.success(t('profile.success.avatarUpdated'))
   } catch (error) {
-    console.error('Avatar upload failed:', error)
-    ElMessage.error('头像上传失败')
-    newAvatarFile.value = null
+    errors.value.avatar = error.message
+    ElMessage.error(error.message)
   } finally {
-    loading.value = false
+    loadingStates.value.avatar = false
   }
 }
 
-// 更新用户信息
-const updateProfile = async () => {
-  try {
-    loading.value = true
-    const currentUser = AV.User.current()
-    
-    if (!currentUser) {
-      throw new Error('用户未登录')
-    }
+// 性别选项
+const genderOptions = computed(() => [
+  { value: 'notSpecified', label: t('profile.user.gender.notSpecified') },
+  { value: 'male', label: t('profile.user.gender.male') },
+  { value: 'female', label: t('profile.user.gender.female') },
+  { value: 'other', label: t('profile.user.gender.other') },
+  { value: 'nonBinary', label: t('profile.user.gender.nonBinary') },
+  { value: 'alien', label: t('profile.user.gender.alien') },
+  { value: 'toaster', label: t('profile.user.gender.toaster') },
+  { value: 'dinosaur', label: t('profile.user.gender.dinosaur') },
+  { value: 'robot', label: t('profile.user.gender.robot') },
+  { value: 'ghost', label: t('profile.user.gender.ghost') },
+  { value: 'unicorn', label: t('profile.user.gender.unicorn') },
+  { value: 'livingMeme', label: t('profile.user.gender.livingMeme') },
+  { value: 'catPerson', label: t('profile.user.gender.catPerson') },
+  { value: 'dogPerson', label: t('profile.user.gender.dogPerson') },
+  { value: 'attackHelicopter', label: t('profile.user.gender.attackHelicopter') },
+  { value: 'stillLoading', label: t('profile.user.gender.stillLoading') },
+  { value: 'quantumSuperposition', label: t('profile.user.gender.quantumSuperposition') },
+  { value: 'coffeeMachine', label: t('profile.user.gender.coffeeMachine') },
+  { value: 'walmartBag', label: t('profile.user.gender.walmartBag') }
+])
 
-    // 如果有新的头像文件，先创建并保存 AV.File
-    if (newAvatarFile.value) {
-      const avFile = new AV.File(newAvatarFile.value.name, newAvatarFile.value)
-      const savedFile = await avFile.save()
-      currentUser.set('avatar', savedFile) // 直接设置 File 对象
+// 验证用户名
+const validateUsername = (value) => {
+  if (!value || value.length < 2) {
+    return { valid: false, message: t('profile.validation.usernameTooShort') }
+  }
+  if (value.length > 20) {
+    return { valid: false, message: t('profile.validation.usernameTooLong') }
+  }
+  if (!/^[\w\u4e00-\u9fa5]+$/.test(value)) {
+    return { valid: false, message: t('profile.validation.usernameInvalid') }
+  }
+  return { valid: true }
+}
+
+// 验证个人简介
+const validateBio = (value) => {
+  if (value && value.length > 200) {
+    return { valid: false, message: t('profile.validation.bioTooLong') }
+  }
+  if (value && /[<>]/.test(value)) {
+    return { valid: false, message: t('profile.validation.bioInvalidChars') }
+  }
+  return { valid: true }
+}
+
+// 更新用户资料
+const handleUpdateProfile = async () => {
+  try {
+    loadingStates.value.profile = true
+    errors.value.profile = null
+    
+    // 内容审核
+    const usernameResult = await contentModeration.moderateText(form.value.username, 'username')
+    if (!usernameResult.isValid) {
+      throw new Error(usernameResult.error)
     }
     
-    // 更新其他信息
-    if (form.value.username) {
-      currentUser.set('username', form.value.username)
+    const bioResult = await contentModeration.moderateText(form.value.bio, 'bio')
+    if (!bioResult.isValid) {
+      throw new Error(bioResult.error)
     }
     
-    // 如果有新密码
-    if (form.value.newPassword) {
-      if (!form.value.oldPassword) {
-        throw new Error('请输入原密码')
-      }
-      if (form.value.newPassword !== form.value.confirmPassword) {
-        throw new Error('两次输入的新密码不一致')
-      }
-      await AV.User.updatePassword(form.value.oldPassword, form.value.newPassword)
+    // 获取当前用户
+    const user = AV.User.current()
+    if (!user) {
+      throw new Error(t('profile.error.userNotFound'))
     }
     
-    await currentUser.save()
-    ElMessage.success('个人信息更新成功｜Profile updated successfully')
-    isEditing.value = false
+    // 更新用户资料
+    user.set('username', usernameResult.text)
+    user.set('bio', bioResult.text)
+    user.set('gender', form.value.gender)
     
-    // 重置表单
-    form.value.oldPassword = ''
-    form.value.newPassword = ''
-    form.value.confirmPassword = ''
-    newAvatarFile.value = null
-    avatarPreview.value = null
+    await user.save()
     
+    // 更新状态管理
+    await userStore.fetchCurrentUser()
+    
+    ElMessage.success(t('profile.success.profileUpdated'))
   } catch (error) {
-    console.error('Profile update failed:', error)
-    ElMessage.error(error.message || '更新失败')
+    errors.value.profile = error.message
+    ElMessage.error(error.message)
   } finally {
-    loading.value = false
+    loadingStates.value.profile = false
+  }
+}
+
+// 更新性别
+const handleGenderChange = async (value) => {
+  try {
+    loadingStates.value.gender = true
+    errors.value.gender = null
+    
+    const user = AV.User.current()
+    if (!user) {
+      throw new Error(t('profile.error.userNotFound'))
+    }
+    
+    user.set('gender', value)
+    await user.save()
+    
+    await userStore.fetchCurrentUser()
+  } catch (error) {
+    errors.value.gender = error.message
+    ElMessage.error(error.message)
+  } finally {
+    loadingStates.value.gender = false
   }
 }
 
@@ -368,14 +430,56 @@ onUnmounted(() => {
   checkIntervals.value = {}
 })
 
-// 添加刷新函数
+// 添加刷新作品状态的功能
 const handleRefresh = async () => {
   try {
-    await fetchWorks()
-    ElMessage.success('刷新成功｜Refresh success')
+    loading.value = true
+    
+    // 过滤出未完成的作品
+    const pendingWorks = works.value.filter(work => 
+      work.status === 'generating' || 
+      work.status === 'pending'
+    )
+    
+    if (pendingWorks.length === 0) {
+      ElMessage.info(t('profile.works.noWorkToRefresh'))
+      return
+    }
+
+    // 对每个未完成的作品检查任务状态
+    for (const work of pendingWorks) {
+      if (work.taskId) {
+        await checkTaskStatus(work.taskId, work.id)
+      }
+    }
+
+    // 重新获取所有作品的最新状态
+    const query = new AV.Query('Work')
+    query.equalTo('user', AV.User.current())
+    query.include('user')
+    query.descending('createdAt')
+    const results = await query.find()
+    
+    // 处理更新的作品数据
+    works.value = results.map(work => ({
+      id: work.id,
+      title: work.get('title') || t('profile.works.untitledWork'),
+      imageUrl: work.get('imageUrl') || '',
+      audioUrl: work.get('audioUrl') || '',
+      style: work.get('style') || '',
+      status: work.get('status') || 'completed',
+      progress: work.get('progress') || 0,
+      createdAt: work.createdAt,
+      user: work.get('user'),
+      error: work.get('error'),
+      taskId: work.get('taskId')
+    }))
+
+    ElMessage.success(t('profile.works.refreshSuccess', { count: pendingWorks.length }))
   } catch (error) {
-    console.error('Refresh failed:', error)
-    ElMessage.error('刷新失败｜Refresh failed')
+    ElMessage.error(t('profile.works.refreshError'))
+  } finally {
+    loading.value = false
   }
 }
 
@@ -395,91 +499,413 @@ const fetchUserPoints = async () => {
       userPoints.value = currentUser.get('points') || 0
     }
   } catch (error) {
-    console.error('Fetch points failed:', error)
   }
 }
 
-onMounted(async () => {
-  fetchWorks()
-  fetchUserPoints()
+const paymentSuccessMessage = computed(() => {
+  if (!paymentResult.value) return ''
+  
+  const { planType, points, plan } = paymentResult.value
+  return planType === 'points' 
+    ? t('payment.success.points', { points })
+    : t('payment.success.subscription', { plan })
 })
+
+const hidePaymentSuccess = () => {
+  showPaymentSuccess.value = false
+}
+
+// 添加用户名编辑相关方法
+const startEditUsername = () => {
+  tempUsername.value = form.value.username
+  isEditingUsername.value = true
+}
+
+const saveUsername = async () => {
+  try {
+    if (!validateUsername(tempUsername.value)) {
+      ElMessage.error(t('profile.user.error.invalidUsername'))
+      return
+    }
+
+    const user = AV.User.current()
+    user.set('username', tempUsername.value.trim())
+    await user.save()
+    
+    // 更新表单数据
+    form.value.username = tempUsername.value.trim()
+    
+    // 更新 store 中的用户信息
+    await userStore.fetchCurrentUser()
+    
+    ElMessage.success(t('profile.user.update.success'))
+    isEditingUsername.value = false
+  } catch (error) {
+    ElMessage.error(t('profile.user.update.failed'))
+  }
+}
+
+const cancelEditUsername = () => {
+  isEditingUsername.value = false
+  tempUsername.value = form.value.username
+}
+
+// 添加监听器以更新表单数据
+watch(() => userStore.currentUser, (newUser) => {
+  if (newUser) {
+    form.value = {
+      username: newUser.username,
+      email: newUser.email,
+      bio: newUser.bio || '',
+      gender: newUser.gender || 'notSpecified',
+      createdAt: newUser.createdAt,
+      points: newUser.points || 0,
+      membershipEndDate: newUser.membershipEndDate
+    }
+  }
+}, { immediate: true })
+
+onMounted(async () => {
+  try {
+    loading.value = true
+    await Promise.all([
+      fetchWorks(),
+      fetchUserPoints()
+    ])
+    
+    // 处理支付成功的情况
+    const paymentStatus = route.query.payment_status
+    const paymentType = route.query.type
+    const amount = route.query.amount
+    
+    if (paymentStatus === 'success') {
+      showPaymentSuccess.value = true
+      paymentResult.value = await handlePaymentSuccess(paymentType, amount)
+    }
+  } catch (error) {
+  } finally {
+    loading.value = false
+  }
+})
+
+// 在 script setup 部分添加新的计算属性
+const pageTitle = computed(() => {
+  if (!userStore.currentUser) return 'PhotoSong Profile'
+  return t('profile.meta.title', { username: userStore.currentUser.username })
+})
+
+const pageDescription = computed(() => {
+  if (!userStore.currentUser) return ''
+  return t('profile.meta.description', { username: userStore.currentUser.username })
+})
+
+// 修改 meta 计算属性
+const meta = computed(() => {
+  if (!userStore.currentUser) return {}
+  
+  const title = t('profile.meta.title', { username: userStore.currentUser.username })
+  const description = t('profile.meta.description', { username: userStore.currentUser.username })
+  const imageUrl = userStore.currentUser.avatarUrl || '/src/assets/default-avatar.jpg'
+  
+  return {
+    title,
+    meta: [
+      {
+        name: 'description',
+        content: description
+      },
+      {
+        property: 'og:title',
+        content: title
+      },
+      {
+        property: 'og:description',
+        content: description
+      },
+      {
+        property: 'og:image',
+        content: imageUrl
+      },
+      {
+        property: 'og:type',
+        content: 'profile'
+      },
+      {
+        property: 'og:site_name',
+        content: 'PhotoSong'
+      },
+      {
+        name: 'twitter:card',
+        content: 'summary'
+      },
+      {
+        name: 'twitter:title',
+        content: title
+      },
+      {
+        name: 'twitter:description',
+        content: description
+      },
+      {
+        name: 'twitter:image',
+        content: imageUrl
+      },
+      {
+        name: 'keywords',
+        content: `${userStore.currentUser.username}, PhotoSong artist, AI music creator, photo to music`
+      }
+    ],
+    script: [
+      {
+        type: 'application/ld+json',
+        children: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Person',
+          'name': userStore.currentUser.username,
+          'image': imageUrl,
+          'url': `https://photosong.com/profile/${userStore.currentUser.id}`,
+          'sameAs': userStore.currentUser.socialLinks || [],
+          'mainEntityOfPage': {
+            '@type': 'ProfilePage',
+            '@id': `https://photosong.com/profile/${userStore.currentUser.id}`
+          },
+          'description': description
+        })
+      }
+    ]
+  }
+})
+
+// 使用 useHead 设置动态 meta 信息
+useHead(meta)
+
+// 添加删除作品的函数
+const handleDeleteWork = async (work, event) => {
+  // 阻止事件冒泡，避免触发作品点击事件
+  event.stopPropagation()
+  
+  // 只允许删除失败的作品
+  if (work.status !== 'failed') {
+    ElMessage.warning(t('profile.works.deleteOnlyFailed'))
+    return
+  }
+
+  try {
+    // 显示确认对话框
+    await ElMessageBox.confirm(
+      t('common.confirm.delete'),
+      t('common.delete'),
+      {
+        confirmButtonText: t('common.confirm'),
+        cancelButtonText: t('common.cancel'),
+        type: 'warning'
+      }
+    )
+
+    loading.value = true
+    
+    // 删除作品
+    const workObj = AV.Object.createWithoutData('Work', work.id)
+    await workObj.destroy()
+    
+    // 从列表中移除
+    works.value = works.value.filter(w => w.id !== work.id)
+    
+    ElMessage.success(t('common.success.delete'))
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(t('common.error.delete'))
+    }
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <template>
   <div class="profile">
     <TheNavbar />
     
+    <!-- 支付成功提示 -->
+    <div v-if="showPaymentSuccess" class="payment-success-notification">
+      <div class="notification-content">
+        <div class="success-icon-wrapper">
+          <el-icon class="success-icon"><Check /></el-icon>
+        </div>
+        <div class="notification-text">
+          <h3 class="notification-title">{{ t('payment.success.title') }}</h3>
+          <p class="notification-message">{{ paymentSuccessMessage }}</p>
+        </div>
+        <el-button class="close-btn" @click="hidePaymentSuccess">
+          <el-icon><Close /></el-icon>
+        </el-button>
+      </div>
+    </div>
+    
     <div class="profile-container">
       <!-- 左侧个人信息卡片 -->
-      <div class="user-card glass-card">
-        <div class="card-header">
-          <h2 class="gradient-text">{{ t('profile.title') }}</h2>
-          <div class="header-actions">
-            <el-button 
-              v-if="!isEditing"
-              type="primary" 
-              class="edit-btn glow-btn"
-              @click="isEditing = true"
-            >
-              <el-icon><Edit /></el-icon>
-              edit
-            </el-button>
-            <template v-else>
-              <el-button @click="cancelEdit">cancel</el-button>
-              <el-button 
-                type="primary"
-                @click="updateProfile"
-                :loading="loading"
-                class="glow-btn"
-              >
-                save
-              </el-button>
-            </template>
-          </div>
-        </div>
-        
-        <div class="avatar-section">
+      <div class="profile-sidebar glass-card">
+        <div class="profile-header">
           <div class="avatar-wrapper">
-            <el-avatar 
-              :size="120" 
+            <el-avatar
+              :size="80"
               :src="avatarPreview || avatarUrl"
               @click="triggerAvatarUpload"
-              class="avatar"
-              :alt="t('profile.user.avatar.upload')"
+              class="avatar-upload"
+              :class="{ 'uploading': loading }"
             >
               <div class="upload-overlay">
                 <el-icon><Upload /></el-icon>
-                <span>{{ t('profile.user.avatar.upload') }}</span>
+                <span>{{ loading ? t('common.uploading') : t('profile.user.avatar.upload') }}</span>
               </div>
             </el-avatar>
-            <div class="user-status">
-              <h3 class="username gradient-text">{{ form.username }}</h3>
-              <p class="join-date">{{ new Date(form.createdAt).toLocaleDateString() }}</p>
+            <div v-if="loading" class="upload-loading">
+              <el-icon class="is-loading"><Loading /></el-icon>
+            </div>
+          </div>
+          
+          <div class="user-info">
+            <div class="username-container">
+              <template v-if="!isEditingUsername">
+                <h3 class="username gradient-text" :title="form.username">{{ truncatedUsername }}</h3>
+                <el-button
+                  type="primary"
+                  link
+                  class="edit-username-btn"
+                  @click="startEditUsername"
+                >
+                  <el-icon><Edit /></el-icon>
+                </el-button>
+              </template>
+              <div v-else class="username-edit">
+                <el-input
+                  v-model="tempUsername"
+                  size="small"
+                  :maxlength="20"
+                  class="username-input"
+                  @keyup.enter="saveUsername"
+                  :placeholder="t('profile.user.username.placeholder')"
+                >
+                  <template #prefix>
+                    <el-icon><User /></el-icon>
+                  </template>
+                  <template #suffix>
+                    <el-icon class="save-icon hover-effect" @click="saveUsername"><Check /></el-icon>
+                    <el-icon class="cancel-icon hover-effect" @click="cancelEditUsername"><Close /></el-icon>
+                  </template>
+                </el-input>
+                <div class="input-hint">{{ t('profile.user.username.hint') }}</div>
+              </div>
+            </div>
+            
+            <div class="user-meta">
+              <p class="user-id">ID: {{ userStore.currentUser?.id }}</p>
+              <p class="user-gender">
+                <el-icon><User /></el-icon>
+                {{ form.gender === 'notSpecified' ? t('profile.user.gender.notSpecified') : t('profile.user.gender.' + form.gender) }}
+              </p>
+              <p class="join-date">
+                <el-icon><Calendar /></el-icon>
+                {{ t('profile.userProfile.about.joinedAt', { date: new Date(form.createdAt).toLocaleDateString() }) }}
+              </p>
             </div>
           </div>
         </div>
 
-        <div class="user-stats glass-effect">
+        <div class="user-stats">
           <div class="stat-item">
-            <span class="stat-value gradient-text">{{ works.length }}</span>
-            <span class="stat-label">{{ t('profile.user.works') }}</span>
+            <el-icon><VideoPlay /></el-icon>
+            <div class="stat-content">
+              <span class="stat-value gradient-text">{{ works.length }}</span>
+              <span class="stat-label">{{ t('profile.user.works') }}</span>
+            </div>
           </div>
           
           <div class="stat-item">
-            <span class="stat-value gradient-text">{{ membershipDays }}</span>
-            <span class="stat-label">{{ t('profile.user.membership.daysLeft', { days: membershipDays }) }}</span>
+            <el-icon><Star /></el-icon>
+            <div class="stat-content">
+              <span class="stat-value gradient-text">{{ userPoints }}</span>
+              <span class="stat-label">{{ t('profile.user.points') }}</span>
+            </div>
           </div>
-          <div class="stat-item">
-            <span class="stat-value gradient-text">{{ userPoints }}</span>
-            <span class="stat-label">{{ t('profile.user.points') }}</span>
+        </div>
+
+        <div class="bio-section">
+          <div class="section-header">
+            <h4 class="bio-label">{{ t('profile.user.bio.label') }}</h4>
+            <el-button 
+              v-if="!isEditing" 
+              type="primary" 
+              link 
+              class="edit-btn hover-effect"
+              @click="isEditing = true"
+            >
+              <el-icon><Edit /></el-icon>
+            </el-button>
           </div>
+          
+          <template v-if="!isEditing">
+            <p class="bio-text">{{ form.bio || t('profile.userProfile.about.noBio') }}</p>
+          </template>
+          <template v-else>
+            <el-input
+              v-model="form.bio"
+              type="textarea"
+              :rows="4"
+              :maxlength="200"
+              show-word-limit
+              :placeholder="t('profile.user.bio.placeholder')"
+              class="bio-input custom-textarea"
+              resize="none"
+            />
+            <div class="edit-actions">
+              <el-button @click="cancelEdit" class="cancel-button">
+                {{ t('create.buttons.cancel') }}
+              </el-button>
+              <el-button 
+                type="primary"
+                @click="handleUpdateProfile"
+                :loading="loadingStates.profile"
+                class="save-button"
+              >
+                {{ t('profile.userProfile.about.saveBio') }}
+              </el-button>
+            </div>
+          </template>
+        </div>
+
+        <div class="gender-section">
+          <h4 class="section-label">{{ t('profile.user.gender.label') }}</h4>
+          <el-select
+            v-model="form.gender"
+            class="gender-select custom-select"
+            :placeholder="t('profile.user.gender.placeholder')"
+            @change="handleGenderChange"
+            :loading="loadingStates.gender"
+          >
+            <el-option
+              v-for="option in genderOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            >
+              <span class="gender-option">
+                <el-icon v-if="option.value === form.gender"><Check /></el-icon>
+                {{ option.label }}
+              </span>
+            </el-option>
+          </el-select>
+          <p class="current-gender" v-if="form.gender">
+            {{ form.gender === 'notSpecified' ? t('profile.user.gender.notSpecified') : t('profile.user.gender.' + form.gender) }}
+          </p>
         </div>
 
         <el-button 
           type="danger" 
-          class="logout-btn glass-effect"
+          class="logout-btn"
           @click="handleLogout"
         >
+          <el-icon><Close /></el-icon>
           {{ t('profile.user.logout.button') }}
         </el-button>
       </div>
@@ -487,23 +913,23 @@ onMounted(async () => {
       <!-- 右侧内容区域 -->
       <div class="content-area">
         <!-- 作品展示区域 -->
-   
         <div class="works-section glass-card">
           <div class="section-header">
             <div class="header-content">
               <div class="title-group">
-                <h2 class="gradient-text">{{ t('profile.works.title') }}</h2>
+                <h2 class="section-title">{{ t('profile.works.title') }}</h2>
                 <div class="stats-badges">
                   <div class="stat-badge">
-                    <span class="badge-value">{{ works.length }}</span>
+                    <span class="badge-value gradient-text">{{ works.length }}</span>
                     <span class="badge-label">{{ t('profile.works.total') }}</span>
                   </div>
                   <div class="stat-badge">
-                    <span class="badge-value">{{ works.filter(w => w.status === 'completed').length }}</span>
+                    <span class="badge-value gradient-text">{{ completedWorksCount }}</span>
                     <span class="badge-label">{{ t('profile.works.completed') }}</span>
                   </div>
                 </div>
               </div>
+              
               <div class="filter-actions">
                 <div class="filter-tabs">
                   <button 
@@ -514,14 +940,18 @@ onMounted(async () => {
                     @click="filterStatus = option.value"
                   >
                     <span class="tab-text">{{ option.label }}</span>
-                    <div class="tab-count">{{ works.filter(w => option.value === 'all' ? true : w.status === option.value).length }}</div>
+                    <span class="tab-count">
+                      {{ option.value === 'all' 
+                         ? works.length 
+                         : works.filter(w => w.status.toUpperCase() === option.value).length }}
+                    </span>
                   </button>
                 </div>
                 <el-button 
                   type="primary"
                   size="default"
                   @click="handleRefresh"
-                  :loading="loading"
+                  :loading="loadingStates.works"
                   class="refresh-btn"
                 >
                   <el-icon><Refresh /></el-icon>
@@ -531,59 +961,52 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="works-grid" v-if="filteredWorks.length > 0">
+          <div v-if="filteredWorks.length > 0" class="works-grid">
             <div 
               v-for="work in filteredWorks" 
               :key="work.id"
-              class="work-card glass-effect"
+              class="work-card"
               @click="handleWorkClick(work)"
             >
-              <div class="work-image">
-                <img :src="work.imageUrl" :alt="work.title">
+              <div class="work-image-wrapper">
+                <img 
+                  :src="work.imageUrl" 
+                  :alt="work.title || t('profile.works.untitledWork')"
+                  class="work-image"
+                />
                 <div class="work-overlay">
-                  <div class="status-icon">
-                    <el-icon v-if="work.status === 'completed'" class="play-icon"><CaretRight /></el-icon>
-                    <el-icon v-else-if="work.status === 'generating'" class="rotating"><Loading /></el-icon>
-                    <el-icon v-else-if="work.status === 'failed'" class="error-icon"><Warning /></el-icon>
+                  <div class="work-status" :class="work.status.toLowerCase()">
+                    <el-icon v-if="work.status.toUpperCase() === WorkStatus.COMPLETED"><Check /></el-icon>
+                    <el-icon v-else-if="work.status.toUpperCase() === WorkStatus.GENERATING" class="rotating"><Loading /></el-icon>
+                    <el-icon v-else><Warning /></el-icon>
+                    {{ t(`profile.works.status.${work.status.toUpperCase()}`) }}
                   </div>
-                  <div v-if="work.status === 'generating'" class="progress-bar">
-                    <div class="progress-fill" :style="{ width: work.progress + '%' }"></div>
-                  </div>
+                  <!-- 添加删除按钮，只在失败状态显示 -->
+                  <el-button
+                    v-if="work.status === 'failed'"
+                    type="danger"
+                    size="small"
+                    class="delete-btn"
+                    @click="(e) => handleDeleteWork(work, e)"
+                  >
+                    <el-icon><Delete /></el-icon>
+                    {{ t('common.delete') }}
+                  </el-button>
                 </div>
               </div>
-              
               <div class="work-info">
-                <h3 class="work-title">{{ work.title }}</h3>
+                <h3 class="work-title">{{ work.title || t('profile.works.untitledWork') }}</h3>
                 <div class="work-meta">
-                  <div class="status-info">
-                    <el-tag 
-                      :type="work.status === 'completed' ? 'success' : 
-                             work.status === 'generating' ? 'warning' : 
-                             work.status === 'failed' ? 'danger' : 'info'"
-                      size="small"
-                      class="status-tag"
-                    >
-                      {{ work.status === 'completed' ? 'Completed|已完成' :
-                         work.status === 'generating' ? 'Generating|生成中' :
-                         work.status === 'failed' ? 'Error' : 'Draft|草稿' }}
-                    </el-tag>
-                    <span v-if="work.status === 'generating'" class="progress-text">{{ work.progress }}%</span>
-                  </div>
-                  <div class="work-stats">
-                    <span class="plays" v-if="work.status === 'completed'">
-                      <el-icon><VideoPlay /></el-icon>
-                      {{ work.plays || 0 }}
-                    </span>
-                    <span class="date">{{ new Date(work.createdAt).toLocaleDateString() }}</span>
-                  </div>
+                  <span class="work-date">{{ new Date(work.createdAt).toLocaleDateString() }}</span>
+                  <span class="work-style">{{ t(`create.style.descriptions.${work.style}`) }}</span>
                 </div>
               </div>
             </div>
           </div>
           
           <div v-else class="empty-works">
-            <el-empty :description="filterStatus === 'all' ? '暂无作品' : '没有符合条件的作品'">
-              <el-button type="primary" class="create-btn glow-btn" @click="router.push('/create')">
+            <el-empty :description="filterStatus === 'all' ? t('profile.works.empty.description') : t('profile.works.empty.filtered')">
+              <el-button type="primary" class="create-btn" @click="router.push('/create')">
                 {{ t('profile.works.empty.create') }}
               </el-button>
             </el-empty>
@@ -601,11 +1024,12 @@ onMounted(async () => {
     rgba(var(--primary-color-rgb), 0.05),
     rgba(var(--accent-color-rgb), 0.05)
   );
-  padding-top: 64px; // 添加顶部内边距，避免与导航栏重叠
+  padding-top: 64px;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .profile-container {
-  padding-top: 2rem; // 修改顶部内边距
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
@@ -628,316 +1052,465 @@ onMounted(async () => {
   }
 }
 
-.user-card {
-  position: sticky;
-  top: 100px;
-  height: fit-content;
-  padding: 2rem;
+.profile-sidebar {
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
 }
 
-.card-header {
-  margin-bottom: 2rem;
-  
-  .gradient-text {
-    font-size: 1.5rem;
-    margin: 0;
-  }
-}
-
-.avatar-section {
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .avatar-wrapper {
   position: relative;
-  display: inline-block;
-  
-  .avatar {
-    border: 4px solid rgba(var(--primary-color-rgb), 0.2);
-    box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.1);
-    transition: transform 0.3s ease;
-    cursor: pointer;
-    
-    &:hover {
-      transform: scale(1.05);
-      
-      .upload-overlay {
-        opacity: 1;
-      }
-    }
-  }
+  margin-bottom: 1rem;
+}
+
+.avatar-upload {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.avatar-upload:hover {
+  transform: scale(1.05);
+  border-color: var(--el-color-primary);
+}
+
+.avatar-upload.uploading {
+  opacity: 0.7;
+  pointer-events: none;
 }
 
 .upload-overlay {
   position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
   opacity: 0;
   transition: opacity 0.3s ease;
-  border-radius: 50%;
-  color: white;
-  
-  .el-icon {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-  }
 }
 
-.user-status {
-  margin-top: 1rem;
+.avatar-upload:hover .upload-overlay {
+  opacity: 1;
+}
+
+.upload-overlay .el-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.upload-overlay span {
+  font-size: 12px;
+  text-align: center;
+}
+
+.upload-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--el-color-primary);
+  font-size: 24px;
+}
+
+.is-loading {
+  animation: spin 1s linear infinite;
+}
+
+.user-info {
+  width: 100%;
+}
+
+.username-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  width: 100%;
+  padding: 0 1rem;
+}
+
+.username {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+.edit-username-btn {
+  flex-shrink: 0;
+}
+
+.username-edit {
+  width: 100%;
+  max-width: 250px;
+}
+
+.username-input {
+  margin: 0;
+}
+
+.username-input :deep(.el-input__wrapper) {
+  background: var(--el-fill-color-blank);
+  border-radius: 12px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.username-input :deep(.el-input__wrapper):hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.username-input :deep(.el-input__wrapper):focus-within {
+  box-shadow: 0 0 0 2px var(--el-color-primary-light-3);
+}
+
+.save-icon,
+.cancel-icon {
+  cursor: pointer;
+  margin-left: 8px;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.save-icon {
+  color: var(--el-color-success);
+}
+
+.save-icon:hover {
+  background: var(--el-color-success-light-9);
+}
+
+.cancel-icon {
+  color: var(--el-color-danger);
+}
+
+.cancel-icon:hover {
+  background: var(--el-color-danger-light-9);
+}
+
+.input-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-top: 4px;
+  padding-left: 4px;
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
   
-  .username {
-    font-size: 1.25rem;
-    font-weight: 600;
+  p {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin: 0;
-    color: var(--text-color);
-  }
-  
-  .join-date {
     font-size: 0.875rem;
     color: var(--text-color-light);
-    margin: 0.5rem 0 0;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    
+    .el-icon {
+      font-size: 1rem;
+      opacity: 0.7;
+    }
+  }
+  
+  .user-gender {
+    color: var(--primary-color);
   }
 }
 
 .user-stats {
-  grid-template-columns: repeat(3, 1fr); // 改回三列布局
-  border-radius: 1rem;
-  padding: 1.5rem;
-  margin: 2rem 0;
-  display: grid; // 确保网格布局生效
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
-  text-align: center; // 居中对齐
-  
-  .stat-item {
-    .stat-value {
-      font-size: 1.75rem; // 稍微调小字体以适应三列
-      margin-bottom: 0.5rem;
-      background-size: 200% auto;
-      animation: shine 2s linear infinite;
-      display: block; // 确保值独占一行
+  margin: 1.5rem 0;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--el-text-color-secondary);
+}
+
+.bio-section {
+  margin: 1.5rem 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.edit-btn {
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.edit-btn:hover {
+  opacity: 1;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.gender-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--glass-background);
+  border-radius: 0.75rem;
+  border: var(--glass-border);
+
+  .section-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
+
+  .gender-select {
+    width: 100%;
+    margin-bottom: 0.5rem;
+
+    :deep(.el-input__wrapper) {
+      background: var(--glass-background);
+      border: var(--glass-border);
+      box-shadow: none;
+
+      &:hover {
+        border-color: var(--primary-color);
+      }
+
+      &.is-focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 1px var(--primary-color);
+      }
     }
-    
-    .stat-label {
-      font-weight: 500;
-      opacity: 0.8;
-      font-size: 0.875rem; // 调整标签字体大小
+
+    :deep(.el-select-dropdown__item) {
+      &.selected {
+        background-color: var(--primary-color-light);
+        color: var(--primary-color);
+      }
+
+      &:hover {
+        background-color: var(--primary-color-lighter);
+      }
     }
   }
+
+  .gender-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    
+    .el-icon {
+      color: var(--primary-color);
+      font-size: 1rem;
+    }
+  }
+
+  .current-gender {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: var(--glass-background-darker);
+    border-radius: 0.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: var(--glass-background-darkest);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+// 添加一些动画效果
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gender-section {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.current-gender {
+  animation: fadeIn 0.3s ease-out;
 }
 
 .logout-btn {
   width: 100%;
   margin-top: 1rem;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(var(--error-color-rgb), 0.2);
-  }
-}
-
-.content-area {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
 }
 
 .works-section {
-  padding: 2rem;
-  border-radius: 1rem;
+  padding: 1.5rem;
   background: var(--glass-background);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
 }
 
 .section-header {
-  margin-bottom: 2rem;
-  
-  .header-content {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
+  margin-bottom: 1.5rem;
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .title-group {
   display: flex;
   align-items: center;
-  gap: 2rem;
-  
-  .gradient-text {
-    font-size: 2rem;
-    font-weight: 800;
-    margin: 0;
-    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    position: relative;
-    
-    &::before {
-      content: '';
-      position: absolute;
-      left: -20px;
-      top: 50%;
-      width: 4px;
-      height: 24px;
-      background: var(--primary-color);
-      transform: translateY(-50%);
-      border-radius: 2px;
-      box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.5);
-    }
-  }
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.section-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .stats-badges {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.stat-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(var(--primary-color-rgb), 0.1);
+  border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+  border-radius: 0.5rem;
   
-  .stat-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    
-    .badge-value {
-      font-size: 1.125rem;
-      font-weight: 600;
-      color: var(--primary-color);
-    }
-    
-    .badge-label {
-      font-size: 0.875rem;
-      color: var(--text-color-light);
-    }
+  .badge-value {
+    font-weight: 600;
+    color: var(--primary-color);
+  }
+  
+  .badge-label {
+    font-size: 0.875rem;
+    color: var(--text-color-light);
   }
 }
 
 .filter-actions {
   display: flex;
-  gap: 1rem;
-  align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.03);
-  padding: 0.75rem;
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  align-items: center;
+  gap: 1rem;
 }
 
 .filter-tabs {
   display: flex;
   gap: 0.5rem;
-  flex: 1;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.tab-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-color-light);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
   
-  .tab-button {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1.25rem;
-    border: none;
-    background: transparent;
-    color: var(--text-color-light);
-    border-radius: 0.75rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg,
-        rgba(var(--primary-color-rgb), 0.1),
-        rgba(var(--accent-color-rgb), 0.1)
-      );
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-    
-    &:hover {
-      color: var(--text-color);
-      
-      &::before {
-        opacity: 1;
-      }
-      
-      .tab-count {
-        background: rgba(var(--primary-color-rgb), 0.2);
-      }
-    }
-    
-    &.active {
-      color: var(--primary-color);
-      background: rgba(var(--primary-color-rgb), 0.1);
-      
-      &::before {
-        opacity: 1;
-      }
-      
-      .tab-count {
-        background: rgba(var(--primary-color-rgb), 0.2);
-        color: var(--primary-color);
-      }
-    }
-    
-    .tab-text {
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
+  &:hover {
+    background: rgba(var(--primary-color-rgb), 0.1);
+  }
+  
+  &.active {
+    background: var(--primary-color);
+    color: white;
     
     .tab-count {
-      background: rgba(255, 255, 255, 0.1);
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.5rem;
-      font-size: 0.75rem;
-      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.2);
     }
+  }
+  
+  .tab-count {
+    padding: 0.25rem 0.5rem;
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
   }
 }
 
 .refresh-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border: none;
-  background: linear-gradient(135deg,
-    rgba(var(--primary-color-rgb), 0.2),
-    rgba(var(--accent-color-rgb), 0.2)
-  );
-  color: var(--primary-color);
-  border-radius: 0.75rem;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    background: linear-gradient(135deg,
-      rgba(var(--primary-color-rgb), 0.3),
-      rgba(var(--accent-color-rgb), 0.3)
-    );
-    transform: translateY(-2px);
-  }
-  
-  &:active {
-    transform: translateY(0);
-  }
-  
-  .el-icon {
-    font-size: 1.125rem;
-    transition: transform 0.3s ease;
-  }
-  
-  &:hover .el-icon {
-    transform: rotate(180deg);
-  }
+  white-space: nowrap;
 }
 
 .works-grid {
@@ -948,174 +1521,116 @@ onMounted(async () => {
 }
 
 .work-card {
-  background: var(--glass-background);
-  border-radius: 1rem;
+  background: var(--card-background);
+  border-radius: 0.75rem;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s ease;
   border: 1px solid rgba(255, 255, 255, 0.1);
   
   &:hover {
-    transform: translateY(-5px);
-    border-color: var(--primary-color);
-    box-shadow: 0 8px 32px rgba(var(--primary-color-rgb), 0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     
-    .work-image img {
-      transform: scale(1.1);
+    .work-image {
+      transform: scale(1.05);
     }
     
     .work-overlay {
       opacity: 1;
     }
-    
-    .status-icon {
-      transform: scale(1.1);
-    }
-    
-    .work-title {
-      background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
   }
 }
 
-.work-image {
+.work-image-wrapper {
   position: relative;
-  height: 200px;
+  padding-top: 75%;
   overflow: hidden;
-  
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.5s ease;
-  }
+}
+
+.work-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
 }
 
 .work-overlay {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 1rem;
   opacity: 0;
   transition: opacity 0.3s ease;
-  
-  .status-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    margin-bottom: 1rem;
-    
-    .el-icon {
-      font-size: 24px;
-      color: white;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-    }
-    
-    .rotating {
-      animation: rotate 2s linear infinite;
-    }
-    
-    .error-icon {
-      color: var(--el-color-danger);
-    }
-  }
 }
 
-.progress-bar {
-  width: 80%;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  overflow: hidden;
+.work-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  font-size: 0.875rem;
+  color: white;
   
-  .progress-fill {
-    height: 100%;
-    background: var(--primary-color);
-    transition: width 0.3s ease;
+  &.completed {
+    background: rgba(var(--success-color-rgb), 0.9);
+  }
+  
+  &.generating {
+    background: rgba(var(--primary-color-rgb), 0.9);
+  }
+  
+  &.failed {
+    background: rgba(var(--danger-color-rgb), 0.9);
+  }
+  
+  .rotating {
+    animation: rotate 1s linear infinite;
   }
 }
 
 .work-info {
-  padding: 1.25rem;
+  padding: 1rem;
 }
 
 .work-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  transition: color 0.3s ease;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-color);
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .work-meta {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.status-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  
-  .status-tag {
-    border: none;
-    padding: 0.25rem 0.75rem;
-  }
-  
-  .progress-text {
-    font-size: 0.875rem;
-    color: var(--el-color-warning);
-  }
-}
-
-.work-stats {
-  display: flex;
   align-items: center;
   gap: 1rem;
-  
-  .plays {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    color: var(--text-color-light);
-    font-size: 0.875rem;
-    
-    .el-icon {
-      color: var(--primary-color);
-    }
-  }
-  
-  .date {
-    font-size: 0.75rem;
-    color: var(--text-color-light);
-    opacity: 0.8;
-  }
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-color-light);
 }
 
 .empty-works {
-  padding: 4rem 0;
+  padding: 3rem 1rem;
   text-align: center;
   
   .create-btn {
-    margin-top: 1.5rem;
+    margin-top: 1rem;
   }
 }
 
@@ -1128,101 +1643,290 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 1024px) {
-  .profile-container {
-    padding: 1rem;
+:deep(.el-empty__description) {
+  margin-top: 1rem;
+  color: var(--text-color-light);
+}
+
+:deep(.el-button--primary) {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  border: none;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
   }
 }
 
+/* 移动端适配 */
 @media (max-width: 768px) {
+  .profile {
+    padding-top: var(--navbar-height-mobile, 60px);
+  }
+
   .profile-container {
+    padding: 1rem;
     grid-template-columns: 1fr;
-    padding: 1rem;
-  }
-  
-  .user-card {
-    position: static;
-    margin-bottom: 2rem;
-  }
-  
-  .user-stats {
-    grid-template-columns: repeat(3, 1fr); // 保持三列布局
-    padding: 1rem;
-    
-    .stat-item {
-      .stat-value {
-        font-size: 1.5rem; // 在移动端进一步减小字体大小
-      }
-    }
-  }
-  
-  .works-section {
-    padding: 1rem;
-  }
-  
-  .section-header {
-    .header-content {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-    }
-    
-    .gradient-text {
-      font-size: 1.75rem;
-      
-      &::before {
-        height: 20px;
-      }
-    }
-  }
-  
-  .filter-actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-  
-  .filter-tabs {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    
-    .tab-button {
-      flex: 1;
-      min-width: calc(50% - 0.25rem);
-      padding: 0.625rem 1rem;
-      justify-content: center;
-    }
-  }
-  
-  .refresh-btn {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .title-group {
-    flex-direction: column;
-    align-items: flex-start;
     gap: 1rem;
-    
-    .gradient-text {
-      font-size: 1.75rem;
-      
-      &::before {
-        height: 20px;
-      }
-    }
-  }
-  
-  .stats-badges {
+    margin: 0;
     width: 100%;
-    justify-content: space-between;
-  }
-  
-  .works-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .work-card {
     max-width: 100%;
   }
+
+  .glass-card {
+    border-radius: 12px;
+    padding: 1rem;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* 侧边栏样式 */
+  .profile-sidebar {
+    padding: 1rem;
+    margin: 0 auto 1rem;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 12px;
+
+    .avatar-wrapper {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      .avatar-upload {
+        width: 100px;
+        height: 100px;
+      }
+
+      .upload-overlay {
+        font-size: 12px;
+      }
+    }
+
+    .user-info {
+      width: 100%;
+      text-align: center;
+
+      .username-container {
+        padding: 0;
+        justify-content: center;
+        
+        .username {
+          font-size: 1.25rem;
+          max-width: 150px;
+          text-align: center;
+        }
+      }
+
+      .username-edit {
+        max-width: 100%;
+        margin: 0 auto;
+        
+        .username-input {
+          height: 36px;
+          font-size: 14px;
+        }
+      }
+
+      .user-meta {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 12px;
+        text-align: center;
+      }
+    }
+
+    .user-stats {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+      margin: 1rem auto;
+      width: 100%;
+      max-width: 300px;
+
+      .stat-item {
+        padding: 0.75rem;
+        text-align: center;
+        
+        .stat-value {
+          font-size: 1.25rem;
+        }
+        
+        .stat-label {
+          font-size: 12px;
+        }
+      }
+    }
+
+    .bio-section {
+      margin: 1rem auto;
+      width: 100%;
+      
+      .bio-label {
+        font-size: 14px;
+        text-align: center;
+      }
+      
+      .bio-text {
+        font-size: 14px;
+        line-height: 1.4;
+        text-align: center;
+      }
+      
+      .bio-input {
+        min-height: 80px;
+        width: 100%;
+      }
+      
+      .edit-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+        
+        .el-button {
+          width: 100%;
+          height: 36px;
+        }
+      }
+    }
+
+    .gender-section {
+      margin: 1rem auto;
+      width: 100%;
+      
+      .section-label {
+        font-size: 14px;
+        text-align: center;
+      }
+      
+      .gender-select {
+        width: 100%;
+      }
+    }
+
+    .logout-btn {
+      width: 100%;
+      height: 36px;
+      margin: 1rem auto 0;
+    }
+  }
+
+  /* 内容区域样式 */
+  .content-area {
+    width: 100%;
+    margin: 0 auto;
+
+    .works-section {
+      width: 100%;
+      margin: 0 auto;
+
+      .section-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+        
+        .title-group {
+          flex-direction: column;
+          align-items: center;
+          
+          .section-title {
+            font-size: 1.25rem;
+            text-align: center;
+          }
+          
+          .stats-badges {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            
+            .stat-badge {
+              font-size: 12px;
+              padding: 0.25rem 0.5rem;
+            }
+          }
+        }
+        
+        .filter-actions {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          
+          .filter-tabs {
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            display: flex;
+            justify-content: center;
+            
+            .tab-button {
+              font-size: 12px;
+              padding: 0.25rem 0.5rem;
+              
+              .tab-count {
+                font-size: 10px;
+              }
+            }
+          }
+          
+          .refresh-btn {
+            width: 100%;
+            height: 36px;
+            font-size: 14px;
+          }
+        }
+      }
+
+      .works-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        width: 100%;
+        margin: 0 auto;
+        
+        .work-card {
+          width: 100%;
+          margin: 0 auto;
+
+          .work-image-wrapper {
+            height: 200px;
+          }
+          
+          .work-info {
+            padding: 0.75rem;
+            text-align: center;
+            
+            .work-title {
+              font-size: 14px;
+            }
+            
+            .work-meta {
+              font-size: 12px;
+              justify-content: center;
+            }
+          }
+        }
+      }
+
+      .empty-works {
+        padding: 2rem 1rem;
+        text-align: center;
+        
+        .create-btn {
+          width: 100%;
+          max-width: 300px;
+          height: 36px;
+          margin: 0 auto;
+        }
+      }
+    }
+  }
+}
+
+.delete-btn {
+  margin-top: auto;
+  backdrop-filter: blur(4px);
 }
 </style> 

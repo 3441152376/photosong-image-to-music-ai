@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A1B41;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4A4E8C;stop-opacity:1" />
+    </linearGradient>
+    <!-- 波浪渐变 -->
+    <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#C2AFF0;stop-opacity:0.2" />
+      <stop offset="50%" style="stop-color:#C2AFF0;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#C2AFF0;stop-opacity:0.2" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="100%" height="100%" fill="url(#bgGradient)"/>
+  
+  <!-- 音乐波浪线 -->
+  <g opacity="0.6">
+    <path d="M0,315 Q300,200 600,315 T1200,315" stroke="url(#waveGradient)" stroke-width="2" fill="none"/>
+    <path d="M0,215 Q300,100 600,215 T1200,215" stroke="url(#waveGradient)" stroke-width="2" fill="none"/>
+    <path d="M0,415 Q300,300 600,415 T1200,415" stroke="url(#waveGradient)" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- 音符装饰 -->
+  <g fill="#C2AFF0" opacity="0.8">
+    <!-- 音符1 -->
+    <path d="M700,200 L720,190 L720,290 C720,310 700,320 685,320 C670,320 660,310 660,295 C660,280 670,270 685,270 C690,270 695,271 700,273 V200" />
+    <!-- 音符2 -->
+    <path d="M800,150 L820,140 L820,240 C820,260 800,270 785,270 C770,270 760,260 760,245 C760,230 770,220 785,220 C790,220 795,221 800,223 V150" />
+    <!-- 音符3 -->
+    <path d="M900,250 L920,240 L920,340 C920,360 900,370 885,370 C870,370 860,360 860,345 C860,330 870,320 885,320 C890,320 895,321 900,323 V250" />
+  </g>
+  
+  <!-- 圆形装饰 -->
+  <g fill="none" stroke="#C2AFF0" opacity="0.3">
+    <circle cx="300" cy="315" r="100"/>
+    <circle cx="300" cy="315" r="80"/>
+    <circle cx="300" cy="315" r="60"/>
+  </g>
+</svg> 

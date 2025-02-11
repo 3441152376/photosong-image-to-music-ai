@@ -1,5 +1,5 @@
 // API 基础URL配置
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://pay.photosong.com/api'
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://pay.photosong.com'
 
 // 支付相关常量
 export const PAYMENT_STATUS = {

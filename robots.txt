@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /community
+Allow: /pricing
+Allow: /tutorial
+Allow: /faq
+Allow: /work/
+Disallow: /auth
+Disallow: /profile
+Disallow: /create
+Disallow: /payment/
+
+Sitemap: https://your-domain.com/sitemap.xml 

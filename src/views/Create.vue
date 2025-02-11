@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Upload, Edit } from '@element-plus/icons-vue'
+import { Upload, Edit, Check, Warning } from '@element-plus/icons-vue'
 import TheNavbar from '../components/TheNavbar.vue'
 import AV from 'leancloud-storage'
 import { analyzeImageWithVision, generateMusic, checkMusicTask } from '../utils/ai'
@@ -42,77 +42,51 @@ const lyrics = ref('')
 const isEditingLyrics = ref(false)
 const userPoints = ref(0)
 
+// 添加缺失的响应式变量
+const generationStatus = ref('PROCESSING') // 可能的值: 'PROCESSING', 'COMPLETED', 'FAILED'
+const currentWork = ref(null)
+
 // 添加积分扣除状态
 const pointsDeducted = ref(false)
 
+// 音乐风格配置
 const styles = [
-  {
-    value: 'pop',
-    icon: 'Headset'
-  },
-  {
-    value: 'rock',
-    icon: 'Lightning'
-  },
-  {
-    value: 'electronic',
-    icon: 'Monitor'
-  },
-  {
-    value: 'jazz',
-    icon: 'Mic'
-  },
-  {
-    value: 'classical',
-    icon: 'Music'
-  },
-  {
-    value: 'folk',
-    icon: 'Guitar'
-  },
-  {
-    value: 'rnb',
-    icon: 'Microphone'
-  },
-  {
-    value: 'hiphop',
-    icon: 'Mic'
-  },
-  {
-    value: 'ambient',
-    icon: 'Cloudy'
-  },
-  {
-    value: 'edm',
-    icon: 'Lightning'
-  },
-  {
-    value: 'metal',
-    icon: 'Lightning'
-  },
-  {
-    value: 'indie',
-    icon: 'Star'
-  },
-  {
-    value: 'soul',
-    icon: 'Mic'
-  },
-  {
-    value: 'blues',
-    icon: 'Guitar'
-  },
-  {
-    value: 'funk',
-    icon: 'Headset'
-  }
+  { value: 'pop', icon: 'musical-note' },
+  { value: 'rock', icon: 'guitar' },
+  { value: 'electronic', icon: 'synthesizer' },
+  { value: 'jazz', icon: 'saxophone' },
+  { value: 'classical', icon: 'orchestra' },
+  { value: 'folk', icon: 'acoustic-guitar' },
+  { value: 'rnb', icon: 'microphone' },
+  { value: 'hiphop', icon: 'turntable' },
+  { value: 'ambient', icon: 'waves' },
+  { value: 'edm', icon: 'headphones' },
+  { value: 'metal', icon: 'electric-guitar' },
+  { value: 'indie', icon: 'vinyl' },
+  { value: 'soul', icon: 'heart-music' },
+  { value: 'blues', icon: 'blues-guitar' },
+  { value: 'funk', icon: 'bass-guitar' },
+  { value: 'chinese', icon: 'chinese-music' },
+  { value: 'chineseClassical', icon: 'traditional-chinese' },
+  { value: 'country', icon: 'country-guitar' },
+  { value: 'postRock', icon: 'post-rock' },
+  { value: 'acidJazz', icon: 'acid-jazz' },
+  { value: 'reggae', icon: 'reggae' },
+  { value: 'latin', icon: 'latin' },
+  { value: 'world', icon: 'world-music' },
+  { value: 'newage', icon: 'new-age' },
+  { value: 'orchestral', icon: 'orchestral' },
+  { value: 'experimental', icon: 'experimental' },
+  { value: 'acoustic', icon: 'acoustic' },
+  { value: 'soundtrack', icon: 'soundtrack' },
+  { value: 'lofi', icon: 'lofi' }
 ]
 
 const languages = [
   {
     value: 'zh',
     icon: '🇨🇳',
-    description: '中文（普通话）'
+    description: '中文'
   },
   {
     value: 'en',
@@ -158,6 +132,31 @@ const languages = [
     value: 'th',
     icon: '🇹🇭',
     description: 'ภาษาไทย'
+  },
+  {
+    value: 'pt',
+    icon: '🇵🇹',
+    description: 'Português'
+  },
+  {
+    value: 'ar',
+    icon: '🇸🇦',
+    description: 'العربية'
+  },
+  {
+    value: 'hi',
+    icon: '🇮🇳',
+    description: 'हिंदी'
+  },
+  {
+    value: 'vi',
+    icon: '🇻🇳',
+    description: 'Tiếng Việt'
+  },
+  {
+    value: 'tr',
+    icon: '🇹🇷',
+    description: 'Türkçe'
   }
 ]
 
@@ -387,66 +386,105 @@ async function pollMusicTask() {
   try {
     const result = await checkMusicTask(currentTaskId.value)
     
-    if (result.status === 'SUCCESS') {
-      musicUrl.value = result.data[0].audio_url
-      
-      // 跳转到用户个人页面
-      router.push({ 
-        name: `${locale.value}-Profile`
-      })
-    } else if (result.status === 'FAILED') {
-      throw new Error('Music generation failed')
-    } else {
-      // 继续轮询
-      setTimeout(() => pollMusicTask(), 5000)
+    switch(result.status) {
+      case 'SUCCESS':
+        musicUrl.value = result.data[0].audio_url
+        generationStatus.value = 'COMPLETED'
+        clearInterval(checkInterval.value)
+        
+        // 跳转到用户个人页面
+        router.push({ 
+          name: `${locale.value}-Profile`,
+          query: {
+            highlight: currentTaskId.value
+          }
+        })
+        break
+        
+      case 'FAILED':
+        generationStatus.value = 'FAILED'
+        clearInterval(checkInterval.value)
+        throw new Error(result.fail_reason || '音乐生成失败')
+        
+      case 'IN_PROGRESS':
+        generationStatus.value = 'PROCESSING'
+        // 更新进度
+        if (result.progress) {
+          progress.value = parseInt(result.progress)
+        }
+        break
+        
+      default:
+        console.warn('Unknown task status:', result.status)
     }
   } catch (error) {
     console.error('Task polling error:', error)
     errorMessage.value = error.message
+    generationStatus.value = 'FAILED'
+    clearInterval(checkInterval.value)
   }
 }
 
-const initAudioContext = async () => {
-  try {
-    // 只在用户交互时创建 AudioContext
-    if (!audioContext.value) {
+// 开始轮询
+function startPolling() {
+  if (checkInterval.value) {
+    clearInterval(checkInterval.value)
+  }
+  checkInterval.value = setInterval(pollMusicTask, 3000)
+}
+
+// 音频上下文初始化
+const initAudioContext = () => {
+  if (!audioContext.value) {
+    try {
       audioContext.value = new (window.AudioContext || window.webkitAudioContext)()
+      if (audioContext.value.state === 'suspended') {
+        audioContext.value.resume()
+      }
+      isAudioInitialized.value = true
+    } catch (error) {
+      console.error('Failed to initialize audio context:', error)
     }
-    
-    // 如果 AudioContext 被挂起，则恢复它
-    if (audioContext.value.state === 'suspended') {
-      await audioContext.value.resume()
-    }
-    
-    return true
-  } catch (error) {
-    console.error('Failed to initialize AudioContext:', error)
-    return false
   }
 }
 
-// 在用户交互时初始化音频
-const handleUserInteraction = async () => {
+// 用户交互处理
+const handleUserInteraction = () => {
   if (!isAudioInitialized.value) {
-    isAudioInitialized.value = await initAudioContext()
+    initAudioContext()
   }
 }
 
-const handlePlay = async () => {
-  if (!isAudioInitialized.value) {
-    isAudioInitialized.value = await initAudioContext()
+// 组件挂载时添加事件监听
+onMounted(() => {
+  document.addEventListener('click', handleUserInteraction)
+  document.addEventListener('keydown', handleUserInteraction)
+  document.addEventListener('touchstart', handleUserInteraction)
+})
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  document.removeEventListener('click', handleUserInteraction)
+  document.removeEventListener('keydown', handleUserInteraction)
+  document.removeEventListener('touchstart', handleUserInteraction)
+  if (audioContext.value) {
+    audioContext.value.close()
+    audioContext.value = null
   }
-  if (!isAudioInitialized.value) {
-    ElMessage.error(t('create.errors.audioInit'))
-    return
-  }
-  
-  // 其他播放逻辑...
-}
+})
 
 // 修改检查任务状态的函数
 const checkTaskStatus = async (taskId, workId) => {
   try {
+    // 获取作品记录
+    const work = await new AV.Query('Work')
+      .get(workId)
+    
+    if (!work) {
+      throw new Error('作品不存在')
+    }
+
+    // 检查任务状态
     const response = await fetch(`https://api.whatai.cc/suno/fetch/${taskId}`, {
       method: 'GET',
       headers: {
@@ -462,14 +500,11 @@ const checkTaskStatus = async (taskId, workId) => {
     const data = await response.json()
     console.log('Task status:', data)
     
-    // 获取作品记录
-    const work = AV.Object.createWithoutData('Work', workId)
-    
     // 根据任务状态更新作品状态
     if (data.code === 'success' && data.data) {
       if (data.data.status === 'SUCCESS') {
         // 更新作品状态为已完成
-        work.set('status', 'completed')
+        work.set('status', 'COMPLETED')
         if (data.data.data && data.data.data.length > 0) {
           const musicData = data.data.data[0]
           work.set('audioUrl', musicData.audio_url)
@@ -479,90 +514,51 @@ const checkTaskStatus = async (taskId, workId) => {
         }
         work.set('progress', 100)
         work.set('completedTime', new Date())
-        work.set('finishTime', data.data.finish_time)
-        
-        // 清除定时器
-        if (checkInterval.value) {
-          clearInterval(checkInterval.value)
-          checkInterval.value = null
-        }
-        
-        ElMessage.success('音乐生成成功！')
       } else if (data.data.status === 'FAILED') {
         // 更新作品状态为失败
-        work.set('status', 'failed')
-        work.set('error', data.data.fail_reason || '音乐生成失败')
-        work.set('progress', 0)
-        
-        // 清除定时器
-        if (checkInterval.value) {
-          clearInterval(checkInterval.value)
-          checkInterval.value = null
-        }
-        
-        // 如果是生成失败且积分已扣除,退还积分
-        if (pointsDeducted.value) {
-          try {
-            await updateUserPoints(POINTS_CONFIG.CREATE_MUSIC, '生成失败退还')
-            userPoints.value = await getUserPoints()
-            pointsDeducted.value = false
-            ElMessage.info('已退还积分')
-          } catch (refundError) {
-            console.error('Points refund failed:', refundError)
-            ElMessage.error('积分退还失败,请联系客服')
-          }
-        }
-        
-        ElMessage.error('音乐生成失败：' + (data.data.fail_reason || '未知错误'))
-      } else if (data.data.status === 'IN_PROGRESS') {
+        work.set('status', 'FAILED')
+        work.set('error', data.data.error || '生成失败')
+      } else if (data.data.status === 'PROCESSING') {
         // 更新进度
-        const progress = parseInt(data.data.progress) || 0
+        const progress = data.data.progress || 0
         work.set('progress', progress)
-        work.set('lastCheckTime', new Date())
-        work.set('startTime', data.data.start_time)
       }
-    } else {
-      throw new Error(data.message || '检查任务状态失败')
+      
+      // 保存更新
+      await work.save()
+      
+      // 更新本地状态
+      currentWork.value = work
+      generationStatus.value = work.get('status')
+      
+      // 如果还在处理中，继续轮询
+      if (data.data.status === 'PROCESSING') {
+        setTimeout(() => checkTaskStatus(taskId, workId), 3000)
+      }
     }
-    
-    // 保存更新
-    await work.save()
-    
   } catch (error) {
-    console.error('Check task status failed:', error)
-    // 增加重试次数
-    const work = AV.Object.createWithoutData('Work', workId)
-    const retryCount = work.get('retryCount') || 0
-    work.set('retryCount', retryCount + 1)
+    console.error('检查任务状态失败:', error)
     
-    // 如果重试次数超过限制，标记为失败并退还积分
-    if (retryCount >= 5) {
-      work.set('status', 'failed')
-      work.set('error', '检查任务状态失败次数过多')
+    try {
+      // 获取作品记录
+      const work = await new AV.Query('Work')
+        .get(workId)
       
-      // 清除定时器
-      if (checkInterval.value) {
-        clearInterval(checkInterval.value)
-        checkInterval.value = null
+      if (work) {
+        // 更新作品状态为失败
+        work.set('status', 'FAILED')
+        work.set('error', error.message)
+        await work.save()
+        
+        // 更新本地状态
+        currentWork.value = work
+        generationStatus.value = 'FAILED'
       }
-      
-      // 退还积分
-      if (pointsDeducted.value) {
-        try {
-          await updateUserPoints(POINTS_CONFIG.CREATE_MUSIC, '任务失败退还')
-          userPoints.value = await getUserPoints()
-          pointsDeducted.value = false
-          ElMessage.info('已退还积分')
-        } catch (refundError) {
-          console.error('Points refund failed:', refundError)
-          ElMessage.error('积分退还失败,请联系客服')
-        }
-      }
-      
-      ElMessage.error('音乐生成失败：检查任务状态失败次数过多')
+    } catch (saveError) {
+      console.error('更新失败状态失败:', saveError)
     }
     
-    await work.save()
+    ElMessage.error('生成音乐失败，请稍后重试')
   }
 }
 
@@ -607,22 +603,42 @@ const generateLyrics = async () => {
       customClass: 'generating-message'
     })
 
-    // 构建提示词
+    // 构建更详细的提示词
     const prompt = {
       role: "user",
       content: [
         {
           type: "text",
-          text: `请根据这张图片创作一首歌词。要求：
+          text: `作为一位专业的作词人，请根据这张图片创作一首歌词。要求：
+
 1. 歌词语言：${selectedLanguages.value.join('、')}
 2. 音乐风格：${selectedStyle.value}
-3. 歌词要求：
-   - 要有完整的主题和情感表达
-   - 要有押韵和音乐性
-   - 要有清晰的结构（如：主歌、副歌、间奏、尾奏等）
-   - 要与图片的内容和氛围相匹配、歌词不要偏离图片内容
-   - 歌词一定要符合我要求的音乐风格
-请直接返回歌词内容，不要包含任何其他说明文字。`
+3. 歌词长度：${selectedLength.value === 'short' ? '简短（2-3段）' : selectedLength.value === 'medium' ? '中等（3-4段）' : '较长（4-5段）'}
+4. 与图片的相关度：${selectedRelevance.value === 'low' ? '低（可以有较多发挥空间）' : selectedRelevance.value === 'medium' ? '中等（部分基于图片内容）' : '高（紧密贴合图片内容）'}
+
+创作要求：
+1. 主题和情感：
+   - 深入分析图片中的视觉元素、场景、氛围
+   - 捕捉并表达图片中的情感和故事
+   - 创造鲜明的意象和比喻
+
+2. 结构和形式：
+   - 清晰的歌曲结构（主歌、副歌、间奏、尾奏、乐器独奏演奏等，要符合选定音乐风格的节奏感）
+   - 注重押韵和音乐性
+   - 符合选定音乐风格的节奏感
+
+3. 创作指导：
+   - 即使图片信息有限，也要发挥创意想象
+   - 可以从图片的细节延伸出更丰富的故事
+   - 结合所选风格的特点进行创作
+
+4. 质量要求：
+   - 歌词要朗朗上口
+   - 意境要优美动人
+   - 情感要真挚自然
+   - 用词要精准贴切
+
+请根据以上要求，创作一首完整的歌词。即使图片信息看起来有限，也请发挥创意，创作出富有感染力的作品。`
         },
         {
           type: "image_url",
@@ -640,7 +656,7 @@ const generateLyrics = async () => {
         'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4-vision-preview",
+        model: "gpt-4o",
         messages: [prompt],
         max_tokens: 1000,
         temperature: 0.8
@@ -691,7 +707,7 @@ const optimizeLyrics = async () => {
         'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: [
           {
             role: "user",
@@ -857,10 +873,18 @@ onMounted(() => {
   // 添加用户交互事件监听
   document.addEventListener('click', handleUserInteraction)
   document.addEventListener('keydown', handleUserInteraction)
+  document.addEventListener('touchstart', handleUserInteraction)
+  
+  // 初始检查时间彩蛋
+  checkTimeEasterEgg()
+  
+  // 每分钟检查一次
+  setInterval(checkTimeEasterEgg, 60000)
   
   return () => {
     document.removeEventListener('click', handleUserInteraction)
     document.removeEventListener('keydown', handleUserInteraction)
+    document.removeEventListener('touchstart', handleUserInteraction)
   }
 })
 
@@ -965,7 +989,17 @@ const styleOptions = [
   { value: 'edm', label: '电子舞曲 EDM' },
   { value: 'metal', label: '金属 Metal' },
   { value: 'indie', label: '独立 Indie' },
-  { value: 'soul', label: '灵魂 Soul' }
+  { value: 'soul', label: '灵魂 Soul' },
+  { value: 'reggae', label: '雷鬼 Reggae' },
+  { value: 'funk', label: '放克 Funk' },
+  { value: 'latin', label: '拉丁 Latin' },
+  { value: 'world', label: '世界音乐 World Music' },
+  { value: 'newage', label: '新世纪 New Age' },
+  { value: 'orchestral', label: '管弦乐 Orchestral' },
+  { value: 'experimental', label: '实验 Experimental' },
+  { value: 'acoustic', label: '原声 Acoustic' },
+  { value: 'soundtrack', label: '电影配乐 Soundtrack' },
+  { value: 'lofi', label: 'Lo-Fi' }
 ]
 
 // 语言选项
@@ -979,38 +1013,12 @@ const languageOptions = [
   { value: 'german', label: t('create.language.options.german') },
   { value: 'italian', label: t('create.language.options.italian') },
   { value: 'russian', label: t('create.language.options.russian') },
-  { value: 'instrumental', label: t('create.language.options.instrumental') }
-]
-
-// 表单数据
-const form = ref({
-  title: '',
-  description: '',
-  style: '',
-  languages: [],
-  relevance: 'medium'
-})
-
-// 在 styles 数组后添加
-const relevanceOptions = [
-  {
-    value: 'high',
-    label: '高度相关',
-    description: '歌词将紧密围绕图片内容，直接描述或诠释图片中的场景、情感和故事',
-    icon: 'Connection'
-  },
-  {
-    value: 'medium',
-    label: '中度相关',
-    description: '歌词将部分基于图片内容，同时加入更多创意和想象',
-    icon: 'Link'
-  },
-  {
-    value: 'low',
-    label: '自由发挥',
-    description: '歌词将以图片为灵感，但更注重创意表达和艺术发挥',
-    icon: 'Magic'
-  }
+  { value: 'portuguese', label: t('create.language.options.portuguese') },
+  { value: 'arabic', label: t('create.language.options.arabic') },
+  { value: 'hindi', label: t('create.language.options.hindi') },
+  { value: 'thai', label: t('create.language.options.thai') },
+  { value: 'vietnamese', label: t('create.language.options.vietnamese') },
+  { value: 'turkish', label: t('create.language.options.turkish') }
 ]
 
 const languageMode = ref('single')
@@ -1020,6 +1028,45 @@ const relevanceLevels = [
   { value: 'low', label: '自由发挥' }
 ]
 const selectedRelevance = ref('medium')
+
+// 时间彩蛋
+const checkTimeEasterEgg = () => {
+  const now = new Date()
+  const hours = now.getHours()
+  const minutes = now.getMinutes()
+  
+  // 在午夜(00:00)或正午(12:00)触发
+  if ((hours === 0 || hours === 12) && minutes === 0) {
+    triggerTimeEasterEgg()
+  }
+}
+
+const triggerTimeEasterEgg = () => {
+  const container = document.querySelector('.create-container')
+  if (!container) return
+  
+  // 添加星空背景
+  container.classList.add('starry-background')
+  
+  // 创建流星
+  for (let i = 0; i < 5; i++) {
+    const meteor = document.createElement('div')
+    meteor.className = 'meteor'
+    meteor.style.left = `${Math.random() * 100}%`
+    meteor.style.animationDelay = `${Math.random() * 2}s`
+    container.appendChild(meteor)
+    
+    // 移除流星
+    setTimeout(() => {
+      meteor.remove()
+    }, 2000)
+  }
+  
+  // 30秒后移除效果
+  setTimeout(() => {
+    container.classList.remove('starry-background')
+  }, 30000)
+}
 </script>
 
 <template>
@@ -1153,16 +1200,8 @@ const selectedRelevance = ref('medium')
                       <component :is="style.icon" />
                     </div>
                     <div class="style-info">
-                      <h3>{{ t(`create.style.${style.value}`) }}</h3>
-                      <p class="style-description">{{ t(`create.style.descriptions.${style.value}`) }}</p>
-                      <div class="style-tags">
-                        <span v-for="(tag, index) in (Array.isArray(t(`create.style.tags.${style.value}`)) ? t(`create.style.tags.${style.value}`) : [])" 
-                              :key="index" 
-                              class="tag"
-                        >
-                          {{ tag }}
-                        </span>
-                      </div>
+                      <h4>{{ t(`create.style.${style.value}`) }}</h4>
+                      <p>{{ t(`create.style.descriptions.${style.value}`) }}</p>
                     </div>
                   </div>
                 </div>
@@ -1294,10 +1333,10 @@ const selectedRelevance = ref('medium')
                 type="textarea"
                 :rows="15"
                 :placeholder="t('create.lyrics.placeholder')"
-                class="lyrics-editor"
+                class="lyrics-editor glass-input"
               />
               <div v-else class="lyrics-preview">
-                {{ lyrics }}
+                <pre>{{ lyrics }}</pre>
               </div>
             </div>
             
@@ -1313,10 +1352,52 @@ const selectedRelevance = ref('medium')
 
           <!-- 生成中状态 -->
           <div v-if="currentStep === 4" class="generating-section">
-            <div class="generating-content">
-              <el-icon class="generating-icon"><Loading /></el-icon>
-              <h3>{{ t('create.generating.title') }}</h3>
-              <p>{{ t('create.generating.description') }}</p>
+            <div class="generating-container">
+              <div class="generating-content" :class="generationStatus">
+                <!-- 生成中状态 -->
+                <div v-if="generationStatus === 'PROCESSING'" class="generating-state">
+                  <div class="loading-animation">
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                  </div>
+                  <h3 class="generating-title">{{ t('create.generating.title') }}</h3>
+                  <p class="generating-description">{{ t('create.generating.description') }}</p>
+                  <div class="progress-container">
+                    <div class="progress-bar">
+                      <div class="progress-inner" :style="{ width: `${currentWork?.progress || 0}%` }"></div>
+                    </div>
+                    <span class="progress-text">{{ currentWork?.progress || 0 }}%</span>
+                  </div>
+                </div>
+
+                <!-- 生成成功状态 -->
+                <div v-else-if="generationStatus === 'COMPLETED'" class="success-state">
+                  <div class="success-icon">
+                    <el-icon><Check /></el-icon>
+                  </div>
+                  <h3 class="status-title">{{ t('create.complete.title') }}</h3>
+                  <p class="status-description">{{ t('create.complete.description') }}</p>
+                  <el-button type="primary" class="result-btn" @click="viewResult">
+                    {{ t('create.complete.viewResult') }}
+                  </el-button>
+                </div>
+
+                <!-- 生成失败状态 -->
+                <div v-else-if="generationStatus === 'FAILED'" class="failed-state">
+                  <div class="failed-icon">
+                    <el-icon><Warning /></el-icon>
+                  </div>
+                  <h3 class="status-title">{{ t('create.failed.title') }}</h3>
+                  <p class="status-description">{{ t('create.failed.description') }}</p>
+                  <div v-if="currentWork?.error" class="error-message">
+                    {{ currentWork.error }}
+                  </div>
+                  <el-button type="primary" class="retry-btn" @click="retryGeneration">
+                    {{ t('create.failed.retry') }}
+                  </el-button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1516,7 +1597,7 @@ const selectedRelevance = ref('medium')
 
 .style-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -1541,29 +1622,21 @@ const selectedRelevance = ref('medium')
   .style-info {
     flex: 1;
     min-width: 0;
-  }
-  
-  .style-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
     
-    .tag {
-      background: rgba(var(--primary-color-rgb), 0.1);
-      border: none;
-      color: var(--text-color);
-      font-size: 0.75rem;
-      padding: 0.25rem 0.75rem;
-      border-radius: 1rem;
-      display: inline-flex;
-      align-items: center;
-      transition: all 0.3s ease;
-      
-      &:hover {
-        background: rgba(var(--primary-color-rgb), 0.2);
-        transform: translateY(-1px);
-      }
+    h4 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem;
+      background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    p {
+      font-size: 0.875rem;
+      color: var(--text-color-light);
+      margin: 0;
+      line-height: 1.5;
     }
   }
   
@@ -1579,15 +1652,25 @@ const selectedRelevance = ref('medium')
   
   &.active {
     border-color: var(--primary-color);
-    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.15);
+    box-shadow: 0 0 0 2px var(--primary-color-10);
     background: linear-gradient(135deg, 
-      rgba(var(--primary-color-rgb), 0.1),
-      rgba(var(--accent-color-rgb), 0.1)
+      var(--glass-background), 
+      rgba(var(--primary-color-rgb), 0.1)
     );
     
     .style-icon {
       color: var(--accent-color);
     }
+  }
+}
+
+@media (max-width: 768px) {
+  .style-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .style-card {
+    padding: 1.25rem;
   }
 }
 
@@ -1613,7 +1696,7 @@ const selectedRelevance = ref('medium')
   padding: 1rem;
   border-radius: 0.75rem;
   background: var(--glass-background);
-  border: 1px solid var(--border-color);
+  border: var(--glass-border);
   cursor: pointer;
   transition: all 0.3s ease;
   width: calc(50% - 0.5rem);
@@ -1634,379 +1717,6 @@ const selectedRelevance = ref('medium')
     }
     
     .language-desc {
-      display: block;
-      font-size: 0.875rem;
-      color: var(--text-color-light);
-      margin-bottom: 0.5rem;
-    }
-    
-    .language-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      
-      .tag {
-        background: rgba(var(--primary-color-rgb), 0.1);
-        border: none;
-        color: var(--text-color);
-        font-size: 0.75rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 1rem;
-        display: inline-flex;
-        align-items: center;
-        transition: all 0.3s ease;
-        
-        &:hover {
-          background: rgba(var(--primary-color-rgb), 0.2);
-          transform: translateY(-1px);
-        }
-      }
-    }
-  }
-  
-  &:hover {
-    transform: translateY(-2px);
-    border-color: var(--primary-color);
-    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.1);
-    
-    .language-icon {
-      transform: scale(1.1);
-    }
-  }
-  
-  &.active {
-    border-color: var(--primary-color);
-    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.15);
-    background: linear-gradient(135deg, 
-      rgba(var(--primary-color-rgb), 0.1),
-      rgba(var(--accent-color-rgb), 0.1)
-    );
-    
-    .language-icon {
-      color: var(--accent-color);
-    }
-  }
-}
-
-.title-input {
-  margin-top: 1rem;
-  
-  :deep(.el-input__wrapper) {
-    padding-left: 1rem;
-    background: var(--glass-background);
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-    
-    &:hover {
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 1px var(--primary-color);
-    }
-    
-    &.is-focus {
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 2px var(--primary-color-10);
-    }
-  }
-  
-  :deep(.el-input__prefix) {
-    color: var(--text-color-secondary);
-  }
-  
-  :deep(.el-input__count) {
-    background: transparent;
-    color: var(--text-color-light);
-    font-size: 0.75rem;
-  }
-  
-  label {
-    display: block;
-    font-size: 0.875rem;
-    color: var(--text-color-light);
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-  }
-}
-
-@media (max-width: 640px) {
-  .style-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .language-options {
-    justify-content: center;
-  }
-  
-  .language-option {
-    flex: 0 0 calc(50% - 0.5rem);
-    justify-content: center;
-  }
-}
-
-.settings-item {
-  margin-bottom: 1.5rem;
-  
-  label {
-    display: block;
-    font-size: 0.875rem;
-    color: var(--text-color-light);
-    margin-bottom: 0.5rem;
-  }
-}
-
-.glass-input {
-  width: 100%;
-  
-  :deep(.el-input__wrapper) {
-    background: var(--glass-background);
-    border: var(--glass-border);
-    box-shadow: none;
-    
-    &:hover, &.is-focus {
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 1px var(--primary-color);
-    }
-  }
-  
-  :deep(.el-input__prefix) {
-    color: var(--text-color-secondary);
-  }
-}
-
-.create-btn {
-  width: 100%;
-  height: 48px;
-  font-size: 1.125rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-  border: none;
-  border-radius: 0.75rem;
-  margin-top: 2rem;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-  
-  span {
-    position: relative;
-  }
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.2);
-    
-    &::before {
-      opacity: 1;
-    }
-  }
-  
-  &:active {
-    transform: translateY(0);
-  }
-}
-
-@media (max-width: 768px) {
-  .container {
-    padding: 1rem;
-  }
-  
-  .create-content {
-    gap: 1.5rem;
-  }
-  
-  .style-card {
-    padding: 1.25rem;
-    
-    h4 {
-      font-size: 1rem;
-    }
-  }
-  
-  .language-option {
-    padding: 0.5rem 1rem;
-    
-    .language-icon {
-      font-size: 1.25rem;
-    }
-    
-    .language-label {
-      font-size: 0.8125rem;
-    }
-  }
-}
-
-.hidden-upload {
-  display: none;
-}
-
-.generating-section {
-  background: var(--glass-background);
-  backdrop-filter: var(--glass-backdrop-filter);
-  border: var(--glass-border);
-  border-radius: 1rem;
-  padding: 4rem 2rem;
-  text-align: center;
-  box-shadow: var(--shadow-lg);
-}
-
-.generating-content {
-  .generating-icon {
-    font-size: 48px;
-    color: var(--primary-color);
-    animation: rotate 2s linear infinite;
-  }
-  
-  h3 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 1rem 0;
-    color: var(--text-color);
-  }
-  
-  p {
-    color: var(--text-color-secondary);
-  }
-}
-
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.upload-progress {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
-  background: var(--glass-background);
-  padding: 10px;
-  border-radius: 8px;
-  backdrop-filter: blur(10px);
-  
-  :deep(.el-progress-bar__outer) {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  :deep(.el-progress-bar__inner) {
-    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-  }
-  
-  :deep(.el-progress__text) {
-    color: var(--text-color);
-  }
-}
-
-.lyrics-section {
-  background: var(--glass-background);
-  backdrop-filter: var(--glass-backdrop-filter);
-  border: var(--glass-border);
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: var(--shadow-lg);
-}
-
-.lyrics-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  
-  h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-color);
-  }
-}
-
-.lyrics-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.lyrics-content {
-  margin-bottom: 2rem;
-}
-
-.lyrics-editor {
-  :deep(.el-textarea__inner) {
-    background: var(--glass-background);
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
-    font-family: monospace;
-    line-height: 1.6;
-    
-    &:focus {
-      border-color: var(--primary-color);
-    }
-  }
-}
-
-.lyrics-preview {
-  background: var(--glass-background);
-  border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  padding: 1rem;
-  min-height: 300px;
-  white-space: pre-wrap;
-  color: var(--text-color);
-  font-family: monospace;
-  line-height: 1.6;
-}
-
-.language-section {
-  margin: 2rem 0;
-}
-
-.language-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin: 1rem 0;
-}
-
-.language-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: var(--glass-background);
-  border: 1px solid var(--border-color);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  width: calc(50% - 0.5rem);
-  
-  .language-icon {
-    font-size: 2rem;
-    transition: transform 0.3s ease;
-  }
-  
-  .language-info {
-    flex: 1;
-    min-width: 0;
-    
-    .language-label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-    
-    .language-desc {
-      display: block;
       font-size: 0.875rem;
       color: var(--text-color-light);
       margin-bottom: 0.5rem;
@@ -2071,7 +1781,7 @@ const selectedRelevance = ref('medium')
   
   .mode-description {
     margin-top: 0.5rem;
-    color: var(--text-color-light);
+    color: var(--text-color-secondary);
     font-size: 0.875rem;
   }
 }
@@ -2104,7 +1814,7 @@ const selectedRelevance = ref('medium')
   padding: 1rem;
   border-radius: 0.75rem;
   background: var(--glass-background);
-  border: 1px solid var(--border-color);
+  border: var(--glass-border);
   cursor: pointer;
   transition: all 0.3s ease;
   
@@ -2119,15 +1829,13 @@ const selectedRelevance = ref('medium')
     min-width: 0;
     
     .length-label {
-      display: block;
       font-weight: 600;
-      margin-bottom: 0.25rem;
+      color: var(--text-color);
     }
     
     .length-desc {
-      display: block;
-      font-size: 0.75rem;
-      color: var(--text-color-light);
+      font-size: 0.875rem;
+      color: var(--text-color-secondary);
     }
   }
   
@@ -2299,7 +2007,7 @@ const selectedRelevance = ref('medium')
 
   :deep(.el-alert) {
     background: var(--glass-background);
-    border: 1px solid rgba(var(--warning-color-rgb), 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     
     .el-alert__title {
       font-size: 1rem;
@@ -2365,4 +2073,349 @@ const selectedRelevance = ref('medium')
   color: var(--text-color-secondary);
   line-height: 1.5;
 }
-</style> 
+
+.starry-background {
+  position: relative;
+  background: linear-gradient(to bottom, #0a0a2a, #1a1a3a);
+  overflow: hidden;
+}
+
+.starry-background::before {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: white;
+  box-shadow: 0 0 50px 1px white;
+  animation: twinkle 1s infinite;
+}
+
+.meteor {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 50px;
+  background: linear-gradient(to bottom, transparent, white);
+  animation: meteor 2s linear;
+  transform: rotate(45deg);
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes meteor {
+  0% {
+    transform: translateY(-100%) rotate(45deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+.lyrics-section {
+  background: var(--glass-background);
+  backdrop-filter: var(--glass-backdrop-filter);
+  border: var(--glass-border);
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+
+  .lyrics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .lyrics-actions {
+      display: flex;
+      gap: 1rem;
+    }
+  }
+
+  .lyrics-content {
+    margin-bottom: 2rem;
+    
+    .lyrics-editor {
+      width: 100%;
+      
+      :deep(.el-textarea__inner) {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-color);
+        font-size: 1rem;
+        line-height: 1.6;
+        padding: 1rem;
+        
+        &:focus {
+          border-color: var(--primary-color);
+        }
+      }
+    }
+    
+    .lyrics-preview {
+      background: rgba(var(--background-color-rgb), 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      min-height: 300px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text-color);
+      max-width: 100%;
+      overflow-x: auto;
+
+      pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        margin: 0;
+      }
+    }
+  }
+}
+
+.generating-section {
+  width: 100%;
+  padding: 2rem;
+  
+  .generating-container {
+    max-width: 600px;
+    margin: 0 auto;
+    background: var(--surface-primary);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
+  }
+  
+  .generating-content {
+    text-align: center;
+    
+    &.PROCESSING {
+      animation: pulse 2s infinite;
+    }
+    
+    &.COMPLETED {
+      animation: fadeIn 0.5s ease-out;
+    }
+    
+    &.FAILED {
+      animation: shake 0.5s ease-in-out;
+    }
+  }
+}
+
+.generating-state {
+  .loading-animation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    height: 60px;
+    
+    .wave {
+      width: 8px;
+      height: 40px;
+      background: var(--primary-color);
+      border-radius: 4px;
+      animation: wave 1s ease-in-out infinite;
+      
+      &:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      
+      &:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+    }
+  }
+}
+
+.generating-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.generating-description {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.progress-container {
+  width: 100%;
+  margin-top: 2rem;
+  
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--surface-secondary);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+    
+    .progress-inner {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+  }
+  
+  .progress-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+}
+
+.success-state, .failed-state {
+  padding: 2rem;
+  
+  .success-icon, .failed-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+  }
+  
+  .success-icon {
+    background: var(--success-color-light);
+    color: var(--success-color);
+    animation: zoomIn 0.5s ease-out;
+  }
+  
+  .failed-icon {
+    background: var(--danger-color-light);
+    color: var(--danger-color);
+    animation: zoomIn 0.5s ease-out;
+  }
+}
+
+.status-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.status-description {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.error-message {
+  padding: 1rem;
+  background: var(--danger-color-light);
+  border-radius: 0.5rem;
+  color: var(--danger-color);
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.result-btn, .retry-btn {
+  min-width: 160px;
+  height: 44px;
+  font-size: 1rem;
+}
+
+@keyframes wave {
+  0%, 100% {
+    height: 20px;
+  }
+  50% {
+    height: 40px;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .generating-section {
+    padding: 1rem;
+    
+    .generating-container {
+      padding: 1.5rem;
+    }
+  }
+  
+  .generating-title {
+    font-size: 1.25rem;
+  }
+  
+  .status-title {
+    font-size: 1.25rem;
+  }
+  
+  .loading-animation {
+    height: 50px;
+    
+    .wave {
+      width: 6px;
+      height: 30px;
+    }
+  }
+}
+</style>

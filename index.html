@@ -1,249 +1,120 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
   <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups"/>
     
-    <!-- 基础 Meta -->
-    <title>Photo Song - Turn Photos into Music | AI Photo Music Generator</title>
-    <meta name="description" content="Transform your photos into unique musical pieces with Photo Song. Our AI-powered platform converts images to music, creating personalized songs from your pictures. Try our photo music generator today! | 让每张照片都能唱出专属的歌。">
-    <meta name="keywords" content="photo to music, image to music converter, picture to song converter, photo music generator, visual music creation, AI music from photos, AI melody generator, photo song maker, image to melody, musical photos, photo music app, photo to melody converter, AI music composition, visual music generator, photo music creation, photo to song converter, AI music generator, photo melody maker, picture music creator, visual song generator, music scenes generator, visual music scenes, photo to music scenes, image to music scenes, scene music creator, visual scene composer, scene melody generator, music visualization, audio scene generation, immersive music creation, 照片音乐转换, AI作曲软件, 图片转音乐, 场景音乐生成">
-    <meta name="author" content="Photo Song">
+    <!-- Primary Meta Tags -->
+    <title>PhotoSong - AI图片转音乐生成器 | 一键将照片转换为音乐</title>
+    <meta name="title" content="PhotoSong - AI图片转音乐生成器 | 一键将照片转换为音乐">
+    <meta name="description" content="PhotoSong是领先的AI音乐生成平台，只需上传照片即可获得独特的音乐作品。支持多种音乐风格，包括流行、古典、爵士等。使用先进的人工智能技术，将图片的视觉元素转化为动听的旋律，让每张照片都有自己的故事。">
+    <meta name="keywords" content="AI音乐生成,图片转音乐,AI作曲,智能音乐制作,人工智能作曲,图像音乐转换,AI配乐,智能配乐,音乐生成器,自动作曲,AI音乐工具,智能音乐应用,照片配乐,图片配乐,智能编曲,AI编曲软件,音乐创作工具,在线音乐制作,人工智能作曲家,智能配乐系统,image to music,photo to music,AI music generator,在线音乐生成,在线AI音乐,免费AI音乐生成">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <meta name="googlebot" content="index, follow">
     <meta name="google" content="notranslate">
-    <link rel="canonical" href="https://photosong.com">
+    <meta name="author" content="PhotoSong">
+    <meta name="copyright" content=" 2024 PhotoSong">
     
-    <!-- Language-specific meta descriptions -->
-    <meta name="description" lang="en" content="Transform your photos into unique musical pieces with Photo Song. Our AI-powered platform converts images to music, creating personalized songs from your pictures. Experience the magic of photo to music conversion with our advanced AI technology.">
-    <meta name="description" lang="zh-CN" content="Photo Song - AI 驱动的照片音乐创作平台，让每张照片都能唱出专属的歌。使用先进的 AI 技术，将图片转换为独特的音乐作品。">
-    <meta name="description" lang="ru" content="Photo Song - Создавайте уникальные музыкальные произведения из ваших фотографий с помощью передовых технологий ИИ.">
-    
-    <!-- 多语言支持 -->
-    <link rel="alternate" hreflang="zh-CN" href="https://photosong.com">
-    <link rel="alternate" hreflang="en-US" href="https://photosong.com/">
-    <link rel="alternate" hreflang="ru-RU" href="https://photosong.com/">
-    <link rel="alternate" hreflang="x-default" href="https://photosong.com">
-    
-    <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Photo Song - Turn Photos into Music | AI Photo Music Generator">
-    <meta property="og:description" content="Transform your photos into unique musical pieces with our AI photo music generator. Convert any image into a personalized song using advanced AI technology. Try our photo to music converter today!">
-    <meta property="og:image" content="https://photosong.com/og-image-en.jpg">
-    <meta property="og:url" content="https://photosong.com">
-    <meta property="og:site_name" content="Photo Song - Photo Music Generator">
-    <meta property="og:locale" content="en_US">
-    <meta property="og:locale:alternate" content="zh_CN">
-    <meta property="og:locale:alternate" content="ru_RU">
-    
-    <!-- Language-specific Open Graph -->
-    <meta property="og:title:en" content="Photo Song - Turn Photos into Music | AI Photo Music Generator">
-    <meta property="og:title:zh" content="Photo Song - AI 驱动的照片音乐创作平台 | 让照片谱写音乐">
-    <meta property="og:title:ru" content="Photo Song - Создание Музыки из Фотографий с Помощью ИИ">
-    
-    <meta property="og:description:en" content="Transform your photos into unique musical pieces with our AI photo music generator. Convert any image into a personalized song using advanced AI technology. Try our photo to music converter today!">
-    <meta property="og:description:zh" content="使用 AI 技术将您的照片转换为独特的音乐作品。我们的高级 AI 音乐生成平台可以将任何图片转化为个性化的歌曲。">
-    <meta property="og:description:ru" content="Создавайте уникальные музыкальные произведения из ваших фотографий с помощью технологии ИИ. Превратите любое изображение в персонализированную песню.">
-    
-    <meta property="og:image:en" content="https://photosong.com/og-image-en.jpg">
-    <meta property="og:image:zh" content="https://photosong.com/og-image-zh.jpg">
-    <meta property="og:image:ru" content="https://photosong.com/og-image-ru.jpg">
-    
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Photo Song - Turn Photos into Music | AI Photo Music Generator">
-    <meta name="twitter:description" content="Transform your photos into unique musical pieces with our AI photo music generator. Convert any image into a personalized song using advanced AI technology.">
-    <meta name="twitter:image" content="https://photosong.com/og-image-en.jpg">
-    <meta name="twitter:creator" content="@PhotoSong">
-    <meta name="twitter:site" content="@PhotoSong">
-    
-    <!-- Language-specific Twitter Cards -->
-    <meta name="twitter:title:en" content="Photo Song - Turn Photos into Music | AI Photo Music Generator">
-    <meta name="twitter:title:zh" content="Photo Song - AI 驱动的照片音乐创作平台 | 让照片谱写音乐">
-    <meta name="twitter:title:ru" content="Photo Song - Создание Музыки из Фотографий с Помощью ИИ">
-    
-    <meta name="twitter:description:en" content="Transform your photos into unique musical pieces with our AI photo music generator. Convert any image into a personalized song using advanced AI technology.">
-    <meta name="twitter:description:zh" content="使用 AI 技术将您的照片转换为独特的音乐作品。我们的高级 AI 音乐生成平台可以将任何图片转化为个性化的歌曲。">
-    <meta name="twitter:description:ru" content="Создавайте уникальные музыкальные произведения из ваших фотографий с помощью технологии ИИ. Превратите любое изображение в персонализированную песню.">
-    
-    <meta name="twitter:image:en" content="https://photosong.com/og-image-en.jpg">
-    <meta name="twitter:image:zh" content="https://photosong.com/og-image-zh.jpg">
-    <meta name="twitter:image:ru" content="https://photosong.com/og-image-ru.jpg">
-    
-    <!-- Mobile Meta -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="Photo Song">
-    <meta name="theme-color" content="#0F172A">
+    <!-- 更多SEO Meta Tags -->
+    <meta name="application-name" content="PhotoSong">
+    <meta name="apple-mobile-web-app-title" content="PhotoSong">
+    <meta name="rating" content="General">
     <meta name="format-detection" content="telephone=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <meta name="msapplication-TileColor" content="#4F46E5">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+    <meta name="theme-color" content="#4F46E5">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://photosong.com/">
+    <meta property="og:title" content="PhotoSong - AI图片转音乐生成器 | 一键将照片转换为音乐">
+    <meta property="og:description" content="PhotoSong是领先的AI音乐生成平台，只需上传照片即可获得独特的音乐作品。支持多种音乐风格，包括流行、古典、爵士等。使用先进的人工智能技术，将图片的视觉元素转化为动听的旋律，让每张照片都有自己的故事。">
+    <meta property="og:image" content="https://photosong.com/images/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="PhotoSong - AI智能音乐创作平台">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta property="og:locale:alternate" content="ru_RU">
+    <meta property="og:site_name" content="PhotoSong">
+    <meta property="og:updated_time" content="2024-01-20T08:00:00+00:00">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@PhotoSong">
+    <meta name="twitter:creator" content="@PhotoSong">
+    <meta name="twitter:url" content="https://photosong.com/">
+    <meta name="twitter:title" content="PhotoSong - AI图片转音乐生成器 | 一键将照片转换为音乐">
+    <meta name="twitter:description" content="PhotoSong是领先的AI音乐生成平台，只需上传照片即可获得独特的音乐作品。支持多种音乐风格，包括流行、古典、爵士等。使用先进的人工智能技术，将图片的视觉元素转化为动听的旋律，让每张照片都有自己的故事。">
+    <meta name="twitter:image" content="https://photosong.com/images/og-image.jpg">
+    <meta name="twitter:image:alt" content="PhotoSong - AI智能音乐创作平台">
+    
+    <!-- Language Alternates -->
+    <link rel="alternate" hreflang="en" href="https://photosong.com/en/">
+    <link rel="alternate" hreflang="ru" href="https://photosong.com/ru/">
+    <link rel="alternate" hreflang="zh" href="https://photosong.com/">
+    <link rel="canonical" href="https://photosong.com/">
+    
+    <!-- DNS Prefetch & Preconnect -->
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    
+    <!-- Google Fonts -->
+    <link 
+      rel="preconnect" 
+      href="https://fonts.googleapis.com"
+      crossorigin
+    >
+    <link 
+      rel="preconnect" 
+      href="https://fonts.gstatic.com"
+      crossorigin
+    >
+    <style>
+      @font-face {
+        font-family: 'Inter';
+        src: url('/fonts/inter-regular.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+    </style>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
-    <link rel="icon" href="/icons/favicon.ico">
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-    <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#0F172A">
+    <link rel="icon" href="/icons/bitbug_favicon.ico">
+    <link rel="shortcut icon" href="/icons/bitbug_favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-192x192.png">
     
-    <!-- PWA Icons -->
-    <meta name="msapplication-TileImage" content="/icons/mstile-144x144.png">
-    <meta name="msapplication-config" content="/browserconfig.xml">
-    
-    <!-- 字体预加载 -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    
-    <!-- 预加载关键资源 -->
-    <link rel="modulepreload" href="/src/main.js">
-    
-    <!-- PWA 支持 -->
+    <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <!-- 高质量外链 -->
-    <link rel="dns-prefetch" href="//musescore.com">
-    <link rel="dns-prefetch" href="//musictech.com">
-    <link rel="dns-prefetch" href="//soundcloud.com">
-    <link rel="dns-prefetch" href="//bandcamp.com">
-    <link rel="dns-prefetch" href="//splice.com">
-    
-    <!-- 结构化数据 -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Photo Song",
-        "alternateName": ["PhotoSong", "Photo to Music", "Image to Music Converter", "Scene Music Generator"],
-        "description": "Transform photos into unique musical pieces with our AI photo music generator. Create immersive music scenes from your images using advanced AI technology.",
-        "url": "https://photosong.com",
-        "applicationCategory": "MultimediaApplication",
-        "operatingSystem": "All",
-        "sameAs": [
-          "https://musescore.com/groups/photo-song",
-          "https://musictech.com/reviews/photo-song",
-          "https://soundcloud.com/photo-song-official",
-          "https://bandcamp.com/photo-song",
-          "https://splice.com/sounds/photo-song"
-        ],
-        "relatedLink": [
-          "https://www.musicradar.com/news/best-music-creation-apps",
-          "https://www.soundonsound.com/music-apps",
-          "https://www.musicindustryhowto.com/music-tech-tools",
-          "https://www.kvraudio.com/plugins/music-generation",
-          "https://www.musicconnection.com/music-tech-innovations"
-        ],
-        "offers": {
-          "@type": "AggregateOffer",
-          "priceCurrency": "USD",
-          "lowPrice": "0",
-          "highPrice": "99",
-          "offerCount": "4",
-          "offers": [
-            {
-              "@type": "Offer",
-              "name": "Free Trial",
-              "price": "0",
-              "priceCurrency": "USD"
-            },
-            {
-              "@type": "Offer",
-              "name": "Basic Plan",
-              "price": "5",
-              "priceCurrency": "USD"
-            },
-            {
-              "@type": "Offer",
-              "name": "Pro Plan",
-              "price": "15",
-              "priceCurrency": "USD"
-            },
-            {
-              "@type": "Offer",
-              "name": "Enterprise Plan",
-              "price": "99",
-              "priceCurrency": "USD"
-            }
-          ]
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.8",
-          "ratingCount": "1250",
-          "reviewCount": "680",
-          "bestRating": "5",
-          "worstRating": "1"
-        },
-        "review": {
-          "@type": "Review",
-          "reviewRating": {
-            "@type": "Rating",
-            "ratingValue": "5",
-            "bestRating": "5"
-          },
-          "author": {
-            "@type": "Person",
-            "name": "John Smith"
-          },
-          "reviewBody": "Amazing tool for converting photos into beautiful music scenes. The AI technology creates truly immersive musical experiences!"
-        },
-        "applicationSuite": "Photo Music Creation Suite",
-        "featureList": "AI Photo Analysis, Music Scene Generation, Multi-language Support, Community Sharing, Visual Music Creation",
-        "releaseNotes": "Latest version includes improved scene generation algorithms and enhanced music visualization",
-        "softwareVersion": "2.0",
-        "keywords": "photo to music, image to music converter, music scenes generator, visual music scenes, scene melody generator"
-      }
-    </script>
-    
-    <!-- 音乐应用结构化数据 -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "MusicComposition",
-        "name": "Photo Song Music Creation",
-        "creator": {
-          "@type": "Organization",
-          "name": "Photo Song"
-        },
-        "musicCompositionForm": "Digital",
-        "musicalKey": "Various",
-        "timeRequired": "PT2M",
-        "musicArrangement": "AI Generated Scenes",
-        "abstract": "AI-powered music scene generation from photos",
-        "genre": ["Electronic", "Ambient", "Classical", "Pop", "Scene Music"],
-        "isFamilyFriendly": true,
-        "offers": {
-          "@type": "Offer",
-          "availability": "https://schema.org/InStock",
-          "price": "0",
-          "priceCurrency": "USD"
-        },
-        "mentions": [
-          {
-            "@type": "Thing",
-            "name": "Music Technology Magazine",
-            "url": "https://www.musictech.com"
-          },
-          {
-            "@type": "Thing",
-            "name": "Sound On Sound",
-            "url": "https://www.soundonsound.com"
-          },
-          {
-            "@type": "Thing",
-            "name": "Music Radar",
-            "url": "https://www.musicradar.com"
-          }
-        ]
-      }
-    </script>
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self' https:;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+      style-src 'self' 'unsafe-inline' https: fonts.googleapis.com;
+      font-src 'self' data: fonts.gstatic.com;
+      img-src 'self' data: blob: https: http://lc-myuati5x.cn-n1.lcfile.com https://lc-myuati5x.cn-n1.lcfile.com http://fil.egg404.com https://fil.egg404.com;
+      connect-src 'self' blob: https:;
+      media-src 'self' https:;">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), interest-cohort=(), browsing-topics=(), join-ad-interest-group=(), run-ad-auction=()">
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
     <noscript>
-      <strong>很抱歉，Photo Song 需要启用 JavaScript 才能运行。请启用后重试。</strong>
+      <div class="noscript-message">
+        请启用JavaScript以获得最佳体验。
+        Please enable JavaScript to experience Photo Song.
+      </div>
     </noscript>
   </body>
 </html>

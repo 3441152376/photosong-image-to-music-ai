@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2E1760;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7B2FBE;stop-opacity:1" />
+    </linearGradient>
+    <!-- 网格渐变 -->
+    <linearGradient id="gridGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7B2FBE;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#7B2FBE;stop-opacity:0.3" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="100%" height="100%" fill="url(#bgGradient)"/>
+  
+  <!-- AI 风格网格 -->
+  <g opacity="0.6">
+    <path d="M0,0 L1200,630" stroke="url(#gridGradient)" stroke-width="1" fill="none"/>
+    <path d="M0,157.5 L1200,787.5" stroke="url(#gridGradient)" stroke-width="1" fill="none"/>
+    <path d="M0,315 L1200,945" stroke="url(#gridGradient)" stroke-width="1" fill="none"/>
+    <path d="M0,472.5 L1200,1102.5" stroke="url(#gridGradient)" stroke-width="1" fill="none"/>
+    <path d="M0,630 L1200,1260" stroke="url(#gridGradient)" stroke-width="1" fill="none"/>
+  </g>
+  
+  <!-- 六边形装饰 -->
+  <g transform="translate(600,315)" fill="none" stroke="#7B2FBE" opacity="0.4">
+    <path d="M0,-100 L86.6,-50 L86.6,50 L0,100 L-86.6,50 L-86.6,-50 Z" stroke-width="2"/>
+    <path d="M0,-150 L129.9,-75 L129.9,75 L0,150 L-129.9,75 L-129.9,-75 Z" stroke-width="2"/>
+    <path d="M0,-200 L173.2,-100 L173.2,100 L0,200 L-173.2,100 L-173.2,-100 Z" stroke-width="2"/>
+  </g>
+  
+  <!-- 点阵装饰 -->
+  <g fill="#7B2FBE" opacity="0.5">
+    <circle cx="300" cy="200" r="4"/>
+    <circle cx="350" cy="200" r="4"/>
+    <circle cx="400" cy="200" r="4"/>
+    <circle cx="300" cy="250" r="4"/>
+    <circle cx="350" cy="250" r="4"/>
+    <circle cx="400" cy="250" r="4"/>
+    <circle cx="300" cy="300" r="4"/>
+    <circle cx="350" cy="300" r="4"/>
+    <circle cx="400" cy="300" r="4"/>
+  </g>
+</svg> 

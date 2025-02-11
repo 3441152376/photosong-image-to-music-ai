@@ -3,11 +3,13 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { setLanguage } from '../i18n'
 
 // 导入支持的语言列表
 const supportedLocales = ['zh', 'en', 'ru']
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 
@@ -59,29 +61,46 @@ onUnmounted(() => {
 const switchLanguage = async (langCode) => {
   if (langCode === locale.value) return
   
-  locale.value = langCode
-  localStorage.setItem('language', langCode)
-  isDropdownVisible.value = false
-  
-  // 更新URL中的语言前缀
-  const currentPath = route.path
-  const segments = currentPath.split('/')
-  
-  // 如果第一段是语言代码，则替换它；否则添加语言代码
-  if (supportedLocales.includes(segments[1])) {
-    segments[1] = langCode
-  } else {
-    segments.splice(1, 0, langCode)
-  }
-  
-  const newPath = segments.join('/')
-  
   try {
-    await router.push(newPath)
+    const success = await setLanguage(langCode)
+    if (!success) {
+      ElMessage.error(t('common.error.languageSwitch'))
+      return
+    }
+    
+    // 更新URL中的语言前缀
+    const currentPath = route.path
+    const segments = currentPath.split('/')
+    
+    // 构建新路径
+    let newPath
+    if (supportedLocales.includes(segments[1])) {
+      // 如果当前路径包含语言代码，替换它
+      segments[1] = langCode
+      newPath = segments.join('/')
+    } else {
+      // 如果当前路径不包含语言代码，添加语言代码
+      newPath = `/${langCode}${currentPath}`
+    }
+    
+    try {
+      // 使用 router.push 而不是 replace，并添加错误处理
+      await router.push({
+        path: newPath,
+        query: route.query,
+        hash: route.hash
+      })
+      isDropdownVisible.value = false
+    } catch (error) {
+      if (error.name !== 'NavigationDuplicated') {
+        console.error('Failed to update route:', error)
+        // 如果路由更新失败，回退到带语言代码的首页
+        await router.push(`/${langCode}`)
+      }
+    }
   } catch (error) {
-    console.error('Failed to update route:', error)
-    // 如果路由更新失败，回退到首页
-    router.push(`/${langCode}`)
+    console.error('Failed to switch language:', error)
+    ElMessage.error(t('common.error.languageSwitch'))
   }
 }
 </script>

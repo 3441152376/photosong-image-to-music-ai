@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="338" viewBox="0 0 600 338" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="600" height="338" fill="#10B981" />
+  
+  <!-- 装饰性圆形 -->
+  <circle cx="500" cy="50" r="100" fill="#34D399" opacity="0.3"/>
+  <circle cx="100" cy="300" r="120" fill="#6EE7B7" opacity="0.2"/>
+  
+  <!-- 社区图标组 -->
+  <g transform="translate(150,80)">
+    <!-- 中心用户图标 -->
+    <circle cx="150" cy="100" r="50" stroke="white" stroke-width="4" fill="none"/>
+    <circle cx="150" cy="80" r="15" stroke="white" stroke-width="4" fill="none"/>
+    <path d="M110 140C110 115 130 100 150 100C170 100 190 115 190 140" stroke="white" stroke-width="4" fill="none"/>
+    
+    <!-- 连接线 -->
+    <g stroke="white" stroke-width="2">
+      <line x1="150" y1="150" x2="80" y2="200" />
+      <line x1="150" y1="150" x2="220" y2="200" />
+      <line x1="150" y1="150" x2="150" y2="200" />
+    </g>
+    
+    <!-- 周围小用户图标 -->
+    <g transform="translate(-70,100)">
+      <circle cx="150" cy="100" r="30" stroke="white" stroke-width="3" fill="none"/>
+      <circle cx="150" cy="90" r="8" stroke="white" stroke-width="3" fill="none"/>
+      <path d="M130 120C130 105 140 95 150 95C160 95 170 105 170 120" stroke="white" stroke-width="3" fill="none"/>
+    </g>
+    
+    <g transform="translate(70,100)">
+      <circle cx="150" cy="100" r="30" stroke="white" stroke-width="3" fill="none"/>
+      <circle cx="150" cy="90" r="8" stroke="white" stroke-width="3" fill="none"/>
+      <path d="M130 120C130 105 140 95 150 95C160 95 170 105 170 120" stroke="white" stroke-width="3" fill="none"/>
+    </g>
+    
+    <g transform="translate(0,100)">
+      <circle cx="150" cy="100" r="30" stroke="white" stroke-width="3" fill="none"/>
+      <circle cx="150" cy="90" r="8" stroke="white" stroke-width="3" fill="none"/>
+      <path d="M130 120C130 105 140 95 150 95C160 95 170 105 170 120" stroke="white" stroke-width="3" fill="none"/>
+    </g>
+  </g>
+  
+  <!-- 装饰性音符 -->
+  <g transform="translate(400,200)" fill="white" opacity="0.6">
+    <circle cx="0" cy="0" r="5" />
+    <circle cx="40" cy="-20" r="5" />
+    <circle cx="80" cy="0" r="5" />
+    <path d="M0 0L40 -20L80 0" stroke="white" stroke-width="2"/>
+  </g>
+</svg> 

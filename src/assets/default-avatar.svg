@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 渐变背景 -->
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 圆形背景 -->
+  <circle cx="100" cy="100" r="100" fill="url(#gradient)"/>
+  
+  <!-- 用户图标 -->
+  <path d="M100 90C113.807 90 125 78.8071 125 65C125 51.1929 113.807 40 100 40C86.1929 40 75 51.1929 75 65C75 78.8071 86.1929 90 100 90Z" fill="white"/>
+  <path d="M140 145C140 122.909 122.091 105 100 105C77.9086 105 60 122.909 60 145V160H140V145Z" fill="white"/>
+</svg> 

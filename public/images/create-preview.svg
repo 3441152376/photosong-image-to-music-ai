@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="338" viewBox="0 0 600 338" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="600" height="338" fill="#4F46E5" />
+  
+  <!-- 装饰性波浪 -->
+  <path d="M0 100C150 100 150 150 300 150C450 150 450 100 600 100V338H0V100Z" fill="#6366F1" opacity="0.5"/>
+  <path d="M0 150C150 150 150 200 300 200C450 200 450 150 600 150V338H0V150Z" fill="#818CF8" opacity="0.3"/>
+  
+  <!-- 音符和波形图案 -->
+  <g transform="translate(200,80)">
+    <!-- 大音符 -->
+    <path d="M100 0V120C100 140 85 160 60 160C35 160 20 140 20 120C20 100 35 80 60 80C70 80 80 85 85 90V40L40 50" 
+          stroke="white" stroke-width="8" fill="none"/>
+    
+    <!-- 小音符 -->
+    <path d="M160 40V120C160 130 150 140 140 140C130 140 120 130 120 120C120 110 130 100 140 100C145 100 150 102 152 105V60L120 65" 
+          stroke="white" stroke-width="6" fill="none"/>
+  </g>
+  
+  <!-- 波形图案 -->
+  <g transform="translate(50,200)">
+    <path d="M0 30 Q 25 0, 50 30 Q 75 60, 100 30 Q 125 0, 150 30" stroke="white" stroke-width="3" fill="none"/>
+    <path d="M160 30 Q 185 0, 210 30 Q 235 60, 260 30 Q 285 0, 310 30" stroke="white" stroke-width="3" fill="none"/>
+    <path d="M320 30 Q 345 0, 370 30 Q 395 60, 420 30 Q 445 0, 470 30" stroke="white" stroke-width="3" fill="none"/>
+  </g>
+  
+  <!-- AI 图标 -->
+  <g transform="translate(450,50)">
+    <circle cx="50" cy="50" r="40" stroke="white" stroke-width="4" fill="none"/>
+    <path d="M30 50 L70 50 M50 30 L50 70" stroke="white" stroke-width="4"/>
+  </g>
+</svg> 

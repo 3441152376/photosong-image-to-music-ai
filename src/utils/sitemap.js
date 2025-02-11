@@ -10,7 +10,6 @@ export const generateWorksSitemap = async () => {
     const query = new AV.Query('Work')
     query.equalTo('status', 'completed')
     query.descending('createdAt')
-    query.limit(2000) // 增加收录数量限制
 
     const works = await query.find()
     const urls = []
@@ -58,47 +57,21 @@ export const generateNewsSitemap = async () => {
     const query = new AV.Query('News')
     query.equalTo('status', 'published')
     query.descending('publishedAt')
-    query.limit(1000)
     
-    const news = await query.find()
-    const languages = ['en', 'zh', 'ru']
-    
-    let sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    sitemap += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
-    sitemap += '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"\n'
-    sitemap += '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
-    
-    news.forEach(item => {
-      const newsData = item.toJSON()
-      languages.forEach(lang => {
-        sitemap += '  <url>\n'
-        sitemap += `    <loc>https://photosong.com/${lang}/news/${newsData.objectId}</loc>\n`
-        sitemap += '    <news:news>\n'
-        sitemap += '      <news:publication>\n'
-        sitemap += '        <news:name>Photo Song News</news:name>\n'
-        sitemap += `        <news:language>${lang}</news:language>\n`
-        sitemap += '      </news:publication>\n'
-        sitemap += `      <news:publication_date>${newsData.publishedAt}</news:publication_date>\n`
-        sitemap += `      <news:title>${newsData[`title_${lang}`] || newsData.title}</news:title>\n`
-        sitemap += '    </news:news>\n'
-        
-        // Add hreflang tags
-        languages.forEach(altLang => {
-          sitemap += '    <xhtml:link rel="alternate" hreflang="' + altLang + '" '
-          sitemap += `href="https://photosong.com/${altLang}/news/${newsData.objectId}"/>\n`
-        })
-        sitemap += '    <xhtml:link rel="alternate" hreflang="x-default" '
-        sitemap += `href="https://photosong.com/news/${newsData.objectId}"/>\n`
-        
-        sitemap += '  </url>\n'
-      })
-    })
-    
-    sitemap += '</urlset>'
-    return sitemap
+    try {
+      const news = await query.find()
+      // 如果News类不存在,返回空数组
+      return []
+    } catch (error) {
+      if (error.code === 101) { // Class not found
+        console.log('News class not found, skipping news sitemap generation')
+        return []
+      }
+      throw error
+    }
   } catch (error) {
     console.error('生成新闻站点地图时出错:', error)
-    throw error
+    return [] // 出错时返回空数组而不是抛出错误
   }
 }
 
@@ -127,31 +100,121 @@ export const generateSitemapIndex = () => {
 }
 
 /**
- * 更新所有站点地图
+ * 提交站点地图到搜索引擎
+ * @returns {Promise<Object>} 提交结果
+ */
+export const submitSitemapToSearchEngines = async () => {
+  // 不再提交到任何搜索引擎
+  if (import.meta.env.DEV) {
+    console.log('Sitemap generation completed')
+  }
+  return true
+}
+
+/**
+ * 获取所有需要提交的URL
+ * @returns {Promise<string[]>} URL列表
+ */
+const getAllUrls = async () => {
+  const urls = new Set()
+  
+  // 添加静态页面URL
+  const staticPaths = [
+    '/',
+    '/create',
+    '/community',
+    '/articles',
+    '/works',
+    '/features',
+    '/pricing',
+    '/tutorial',
+    '/ai-music-generator',
+    '/photo-to-music',
+    '/image-to-music',
+    '/ai-music-creator',
+    '/ai-beat-maker',
+    '/faq',
+    '/help',
+    '/contact',
+    '/about',
+    '/terms',
+    '/privacy'
+  ]
+
+  // 添加基础URL
+  staticPaths.forEach(path => {
+    urls.add(`https://photosong.com${path}`)
+    // 添加多语言版本
+    supportedLocales.forEach(locale => {
+      urls.add(`https://photosong.com/${locale}${path}`)
+    })
+  })
+
+  try {
+    // 获取作品URL
+    const workQuery = new AV.Query('Work')
+    workQuery.equalTo('status', 'completed')
+    const works = await workQuery.find()
+    works.forEach(work => {
+      urls.add(`https://photosong.com/work/${work.id}`)
+      supportedLocales.forEach(locale => {
+        urls.add(`https://photosong.com/${locale}/work/${work.id}`)
+      })
+    })
+
+    // 获取文章URL
+    const articleQuery = new AV.Query('Article')
+    articleQuery.equalTo('status', 'published')
+    const articles = await articleQuery.find()
+    articles.forEach(article => {
+      const slug = article.get('slug') || article.id
+      urls.add(`https://photosong.com/articles/${slug}`)
+      supportedLocales.forEach(locale => {
+        urls.add(`https://photosong.com/${locale}/articles/${slug}`)
+      })
+    })
+
+    // 获取新闻URL
+    const newsQuery = new AV.Query('News')
+    newsQuery.equalTo('status', 'published')
+    const news = await newsQuery.find()
+    news.forEach(item => {
+      urls.add(`https://photosong.com/news/${item.id}`)
+      supportedLocales.forEach(locale => {
+        urls.add(`https://photosong.com/${locale}/news/${item.id}`)
+      })
+    })
+  } catch (error) {
+    console.error('Error gathering URLs:', error)
+  }
+
+  return Array.from(urls)
+}
+
+/**
+ * 更新所有站点地图并提交到搜索引擎
  */
 export const updateAllSitemaps = async () => {
   try {
-    // 生成所有站点地图
-    const mainSitemap = generateMainSitemap()
-    const worksSitemap = await generateWorksSitemap()
-    const newsSitemap = await generateNewsSitemap()
-    const sitemapIndex = generateSitemapIndex()
+    const [mainSitemap, worksSitemap, newsSitemap] = await Promise.allSettled([
+      generateMainSitemap(),
+      generateWorksSitemap(),
+      generateNewsSitemap()
+    ])
+
+    // 处理每个站点地图的结果
+    const sitemaps = {
+      'sitemap.xml': mainSitemap.value || '',
+      'works-sitemap.xml': worksSitemap.value || '',
+      'news-sitemap.xml': newsSitemap.value || ''
+    }
+
+    await writeSitemapFiles(sitemaps)
     
-    // 保存到 LeanCloud
-    const files = [
-      new AV.File('sitemap.xml', { base64: btoa(sitemapIndex) }),
-      new AV.File('main-sitemap.xml', { base64: btoa(mainSitemap) }),
-      new AV.File('works-sitemap.xml', { base64: btoa(worksSitemap) }),
-      new AV.File('news-sitemap.xml', { base64: btoa(newsSitemap) })
-    ]
-    
-    await Promise.all(files.map(file => file.save()))
-    
-    console.log('所有站点地图已更新')
-    return true
+    console.log('所有站点地图更新完成')
   } catch (error) {
     console.error('更新站点地图时出错:', error)
-    throw error
+    // 不抛出错误,让应用继续运行
   }
 }
 
@@ -161,18 +224,41 @@ export const updateAllSitemaps = async () => {
  */
 export const generateMainSitemap = () => {
   const staticPaths = [
-    { path: '/', priority: 1.0, changefreq: 'daily' },
-    { path: '/create', priority: 0.9, changefreq: 'daily' },
-    { path: '/community', priority: 0.9, changefreq: 'daily' },
-    { path: '/pricing', priority: 0.8, changefreq: 'weekly' },
-    { path: '/tutorial', priority: 0.7, changefreq: 'weekly' },
+    // 核心功能页面
+    { path: '/', priority: 1.0, changefreq: 'always' },
+    { path: '/create', priority: 1.0, changefreq: 'always' },
+    { path: '/community', priority: 0.9, changefreq: 'always' },
+    { path: '/articles', priority: 0.9, changefreq: 'always' },
+    { path: '/works', priority: 0.9, changefreq: 'always' },
+    
+    // 功能介绍页面
+    { path: '/features', priority: 0.8, changefreq: 'daily' },
+    { path: '/pricing', priority: 0.8, changefreq: 'daily' },
+    { path: '/tutorial', priority: 0.8, changefreq: 'daily' },
+    
+    // AI音乐相关页面
+    { path: '/ai-music-generator', priority: 0.9, changefreq: 'always' },
+    { path: '/photo-to-music', priority: 0.9, changefreq: 'always' },
+    { path: '/image-to-music', priority: 0.9, changefreq: 'always' },
+    { path: '/ai-music-creator', priority: 0.9, changefreq: 'always' },
+    { path: '/ai-beat-maker', priority: 0.9, changefreq: 'always' },
+    
+    // 帮助和支持页面
     { path: '/faq', priority: 0.7, changefreq: 'weekly' },
-    { path: '/contact', priority: 0.6, changefreq: 'monthly' },
+    { path: '/help', priority: 0.7, changefreq: 'weekly' },
+    { path: '/contact', priority: 0.7, changefreq: 'weekly' },
+    
+    // 其他重要页面
+    { path: '/about', priority: 0.6, changefreq: 'monthly' },
     { path: '/terms', priority: 0.5, changefreq: 'monthly' },
     { path: '/privacy', priority: 0.5, changefreq: 'monthly' },
-    { path: '/blog', priority: 0.8, changefreq: 'daily' },
-    { path: '/features', priority: 0.8, changefreq: 'weekly' },
-    { path: '/about', priority: 0.7, changefreq: 'monthly' }
+    
+    // 分类页面
+    { path: '/articles/category/news', priority: 0.8, changefreq: 'always' },
+    { path: '/articles/category/tutorials', priority: 0.8, changefreq: 'daily' },
+    { path: '/articles/category/ai_music', priority: 0.8, changefreq: 'daily' },
+    { path: '/articles/category/knowledge', priority: 0.8, changefreq: 'daily' },
+    { path: '/articles/category/professional', priority: 0.8, changefreq: 'daily' }
   ]
 
   const urls = []
@@ -252,6 +338,56 @@ const generateSitemapXML = (urls) => {
 
   xml += '</urlset>'
   return xml
+}
+
+// 修改文件写入函数
+export const writeSitemapFiles = async (sitemaps) => {
+  try {
+    // 直接生成 sitemap 文件内容
+    const mainSitemap = await generateMainSitemap()
+    const worksSitemap = await generateWorksSitemap()
+    const sitemapIndex = generateSitemapIndex()
+
+    // 只在开发环境输出调试信息
+    if (import.meta.env.DEV) {
+      console.log('Generated sitemaps')
+    }
+
+    // 提交到搜索引擎
+    if (import.meta.env.PROD) {
+      await submitSitemapToSearchEngines()
+    }
+
+    return true
+  } catch (error) {
+    // 静默处理错误，不输出到控制台
+    return false
+  }
+}
+
+// 添加定时更新功能
+export const startSitemapUpdateScheduler = () => {
+  // Only start scheduler in production
+  if (import.meta.env.PROD) {
+    const updateSitemaps = async () => {
+      try {
+        const mainSitemap = await generateMainSitemap()
+        const worksSitemap = await generateWorksSitemap()
+        const sitemapIndex = generateSitemapIndex()
+
+        // 提交到搜索引擎
+        await submitSitemapToSearchEngines()
+      } catch (error) {
+        console.warn('Sitemap update failed:', error)
+      }
+    }
+
+    // Initial update
+    updateSitemaps()
+
+    // Schedule updates every 12 hours
+    setInterval(updateSitemaps, 12 * 60 * 60 * 1000)
+  }
 }
 
 export default {

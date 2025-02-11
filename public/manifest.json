@@ -1,52 +1,21 @@
 {
-  "name": "Photo Song",
+  "name": "PhotoSong",
   "short_name": "PhotoSong",
-  "description": "AI 驱动的照片音乐创作平台",
+  "description": "AI智能音乐生成器 | 图片转音乐",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F172A",
-  "theme_color": "#0F172A",
-  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "/icons/bitbug_favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
     },
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-384x384.png",
-      "sizes": "384x384",
       "type": "image/png",
       "purpose": "any maskable"
     },
@@ -61,16 +30,16 @@
     {
       "name": "创建音乐",
       "short_name": "创建",
-      "description": "开始创作新的音乐",
+      "description": "开始创建新的音乐",
       "url": "/create",
-      "icons": [{ "src": "/icons/create.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
       "name": "社区",
       "short_name": "社区",
       "description": "浏览社区作品",
       "url": "/community",
-      "icons": [{ "src": "/icons/community.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
   ],
   "screenshots": [
@@ -90,25 +59,10 @@
     }
   ],
   "categories": ["music", "photo", "entertainment", "creativity"],
-  "lang": "zh-CN",
-  "dir": "ltr",
+  "dir": "auto",
+  "lang": "zh",
   "prefer_related_applications": false,
   "related_applications": [],
-  "iarc_rating_id": "",
-  "share_target": {
-    "action": "/create",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url",
-      "files": [
-        {
-          "name": "image",
-          "accept": ["image/*"]
-        }
-      ]
-    }
-  }
+  "scope": "/",
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7"
 } 

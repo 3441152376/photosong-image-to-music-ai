@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}} - Photo Song</title>
+    <meta name="description" content="{{description}}">
+    <meta name="keywords" content="{{keywords}}">
+    <meta property="og:title" content="{{title}} - Photo Song">
+    <meta property="og:description" content="{{description}}">
+    <meta property="og:image" content="{{image}}">
+    <meta property="og:url" content="{{url}}">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="{{url}}">
+    <link rel="stylesheet" href="/assets/styles/main.css">
+    {{additionalHead}}
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/" class="logo">
+                <img src="/logo.png" alt="Photo Song Logo">
+            </a>
+            <div class="nav-links">
+                <a href="/community">{{communityText}}</a>
+                <a href="/create">{{createText}}</a>
+                <a href="/pricing">{{pricingText}}</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        {{content}}
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Photo Song</h3>
+                <p>{{footerDescription}}</p>
+            </div>
+            <div class="footer-links">
+                <a href="/about">{{aboutText}}</a>
+                <a href="/privacy">{{privacyText}}</a>
+                <a href="/terms">{{termsText}}</a>
+                <a href="/contact">{{contactText}}</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; {{currentYear}} Photo Song. {{rightsText}}</p>
+        </div>
+    </footer>
+
+    {{additionalScripts}}
+</body>
+</html> 

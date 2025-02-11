@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A2463;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3E92CC;stop-opacity:1" />
+    </linearGradient>
+    <!-- 动态线条渐变 -->
+    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3E92CC;stop-opacity:0.2" />
+      <stop offset="50%" style="stop-color:#3E92CC;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3E92CC;stop-opacity:0.2" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="100%" height="100%" fill="url(#bgGradient)"/>
+  
+  <!-- 科技线条装饰 -->
+  <g opacity="0.6">
+    <path d="M100,100 L300,100 L320,120 L500,120" stroke="url(#lineGradient)" stroke-width="2" fill="none"/>
+    <path d="M100,200 L400,200 L420,220 L600,220" stroke="url(#lineGradient)" stroke-width="2" fill="none"/>
+    <path d="M100,300 L500,300 L520,320 L700,320" stroke="url(#lineGradient)" stroke-width="2" fill="none"/>
+    <path d="M100,400 L600,400 L620,420 L800,420" stroke="url(#lineGradient)" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- 圆形装饰 -->
+  <circle cx="900" cy="315" r="160" fill="none" stroke="#3E92CC" stroke-width="2" opacity="0.3"/>
+  <circle cx="900" cy="315" r="120" fill="none" stroke="#3E92CC" stroke-width="2" opacity="0.4"/>
+  <circle cx="900" cy="315" r="80" fill="none" stroke="#3E92CC" stroke-width="2" opacity="0.6"/>
+  
+  <!-- 点阵装饰 -->
+  <g fill="#3E92CC" opacity="0.5">
+    <circle cx="850" cy="265" r="3"/>
+    <circle cx="870" cy="265" r="3"/>
+    <circle cx="890" cy="265" r="3"/>
+    <circle cx="910" cy="265" r="3"/>
+    <circle cx="930" cy="265" r="3"/>
+    <circle cx="950" cy="265" r="3"/>
+  </g>
+</svg> 

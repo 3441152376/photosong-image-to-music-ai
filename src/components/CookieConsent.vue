@@ -6,18 +6,30 @@ const { t } = useI18n()
 const isVisible = ref(false)
 
 const acceptCookies = () => {
+  // Set first-party cookie consent
   localStorage.setItem('cookieConsent', 'accepted')
+  
+  // Set cookie with appropriate attributes
+  document.cookie = `cookieConsent=accepted; path=/; max-age=31536000; SameSite=Lax; Secure${location.protocol === 'https:' ? '; Partitioned' : ''}`
+  
   isVisible.value = false
 }
 
 const declineCookies = () => {
-  localStorage.setItem('cookieConsent', 'declined')
+  // Only accept essential cookies
+  localStorage.setItem('cookieConsent', 'essential')
+  
+  // Set cookie for essential only
+  document.cookie = `cookieConsent=essential; path=/; max-age=31536000; SameSite=Lax; Secure${location.protocol === 'https:' ? '; Partitioned' : ''}`
+  
   isVisible.value = false
 }
 
 onMounted(() => {
   const consent = localStorage.getItem('cookieConsent')
-  if (!consent) {
+  const cookieConsent = document.cookie.split(';').find(c => c.trim().startsWith('cookieConsent='))
+  
+  if (!consent && !cookieConsent) {
     isVisible.value = true
   }
 })

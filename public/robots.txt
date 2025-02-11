@@ -1,147 +1,60 @@
-# www.robotstxt.org
+# PhotoSong robots.txt
+# https://photosong.com
 
+# Allow all robots complete access
 User-agent: *
 Allow: /
 
-# 禁止访问私有页面和敏感内容
-Disallow: /admin/
-Disallow: /api/
-Disallow: /auth/
-Disallow: /reset-password/
-Disallow: /profile/
-Disallow: /user/
-Disallow: /internal/
-Disallow: /*.json$
-Disallow: /*?*
-Disallow: /*utm_*
-Disallow: /*fbclid
-Disallow: /*gclid
-Disallow: /*/print$
-Disallow: /*/pdf$
+# Global Sitemaps
+Sitemap: https://photosong.com/sitemap.xml
+Sitemap: https://photosong.com/main-sitemap.xml
+Sitemap: https://photosong.com/works-sitemap.xml
+Sitemap: https://photosong.com/news-sitemap.xml
 
-# 允许访问静态资源和内容页面
-Allow: /static/
-Allow: /assets/
-Allow: /images/
-Allow: /fonts/
-Allow: /community/
-Allow: /pricing/
-Allow: /work/
-Allow: /blog/
-Allow: /features/
-Allow: /about/
-Allow: /faq/
-Allow: /tutorial/
-Allow: /*.html$
-Allow: /*.htm$
-Allow: /*.xml$
-Allow: /*.txt$
-Allow: /sitemap*.xml$
-
-# 语言版本
+# Language paths
 Allow: /zh/
 Allow: /en/
 Allow: /ru/
-Allow: /x-default/
 
-# 站点地图
-Sitemap: https://photosong.com/sitemap.xml
-Sitemap: https://photosong.com/sitemap-main.xml
-Sitemap: https://photosong.com/sitemap-works.xml
-Sitemap: https://photosong.com/news-sitemap.xml
-
-# Google 爬虫
-User-agent: Googlebot
-Crawl-delay: 1
-Allow: /*.js$
-Allow: /*.css$
-Allow: /*.png$
-Allow: /*.jpg$
-Allow: /*.gif$
-Allow: /*.svg$
-Allow: /*.ico$
-Allow: /*.woff2$
-
-# Google 图片爬虫
-User-agent: Googlebot-Image
+# Content paths
+Allow: /work/
+Allow: /profile/
+Allow: /community/
+Allow: /about/
+Allow: /features/
+Allow: /help/
 Allow: /images/
-Allow: /*.jpg$
-Allow: /*.jpeg$
-Allow: /*.gif$
-Allow: /*.png$
-Allow: /*.webp$
-Allow: /*.svg$
+Allow: /articles/
+Allow: /works/
 
-# Google 移动端爬虫
-User-agent: Googlebot-Mobile
-Allow: /
-Crawl-delay: 1
+# Disallow sensitive paths
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+Disallow: /auth/
+Disallow: /payment/
+Disallow: /reset-password/
+Disallow: /user/settings/
 
-# Bing 爬虫
-User-agent: Bingbot
-Crawl-delay: 2
-Allow: /*.js$
-Allow: /*.css$
-Allow: /*.png$
-Allow: /*.jpg$
-Allow: /*.gif$
-Allow: /*.svg$
-Allow: /*.ico$
-Allow: /*.woff2$
+# Allow all static resources
+Allow: /*.js
+Allow: /*.css
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.ico
+Allow: /*.woff
+Allow: /*.woff2
+Allow: /*.ttf
+Allow: /*.eot
+Allow: /*.webp
 
-# Yandex 爬虫
-User-agent: Yandexbot
-Crawl-delay: 2
-Allow: /*.js$
-Allow: /*.css$
-Allow: /*.png$
-Allow: /*.jpg$
-Allow: /*.gif$
-Allow: /*.svg$
-Allow: /*.ico$
-Allow: /*.woff2$
+# AI Music Generator Related
+Allow: /ai-music-generator
+Allow: /ai-music-creator
+Allow: /ai-beat-maker
+Allow: /photo-to-music
+Allow: /image-to-music
 
-# Baidu 爬虫
-User-agent: Baiduspider
-Allow: /
-Crawl-delay: 2
-
-# 社交媒体爬虫
-User-agent: Twitterbot
-Allow: /
-Allow: /images/
-Allow: /*.jpg$
-Allow: /*.png$
-Allow: /*.gif$
-
-User-agent: facebookexternalhit
-Allow: /
-Allow: /images/
-Allow: /*.jpg$
-Allow: /*.png$
-Allow: /*.gif$
-
-# 屏蔽特定爬虫
-User-agent: AhrefsBot
-Disallow: /
-
-User-agent: SemrushBot
-Disallow: /
-
-User-agent: MJ12bot
-Disallow: /
-
-User-agent: DotBot
-Disallow: /
-
-User-agent: Rogerbot
-Disallow: /
-
-User-agent: Exabot
-Disallow: /
-
-# URL 参数清理
-Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content
-Clean-param: fbclid&gclid&_ga&_gl&ref&source&from&via
-Clean-param: session_id&token&auth
-Clean-param: lang&locale 

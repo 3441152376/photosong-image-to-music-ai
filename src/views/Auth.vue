@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { useI18n } from 'vue-i18n'
@@ -14,6 +14,8 @@ const { t } = useI18n()
 
 const isLogin = ref(true)
 const loading = ref(false)
+const avatarInput = ref(null)
+
 const form = ref({
   username: '',
   email: '',
@@ -26,7 +28,8 @@ const formErrors = ref({
   username: '',
   email: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  avatar: ''
 })
 
 const avatarUrl = computed(() => {
@@ -48,12 +51,9 @@ const avatarUrl = computed(() => {
   }
 })
 
-const uploadRef = ref(null)
-
-// 表单验证规则
 const validateEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return re.test(email)
 }
 
 const validatePassword = (password) => {
@@ -66,15 +66,24 @@ const validateForm = () => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    avatar: ''
   }
 
-  if (!isLogin.value && !form.value.username) {
-    formErrors.value.username = t('auth.validation.username.required')
-    isValid = false
-  } else if (!isLogin.value && form.value.username.length < 2) {
-    formErrors.value.username = t('auth.validation.username.minLength')
-    isValid = false
+  if (!isLogin.value) {
+    if (!form.value.username) {
+      formErrors.value.username = t('auth.validation.username.required')
+      isValid = false
+    } else if (form.value.username.length < 2) {
+      formErrors.value.username = t('auth.validation.username.minLength')
+      isValid = false
+    }
+
+    // Add avatar validation for registration
+    if (!form.value.avatar) {
+      formErrors.value.avatar = t('auth.validation.avatar.required')
+      isValid = false
+    }
   }
 
   if (!form.value.email) {
@@ -101,17 +110,27 @@ const validateForm = () => {
   return isValid
 }
 
+const triggerAvatarUpload = () => {
+  if (avatarInput.value) {
+    avatarInput.value.click()
+  }
+  // 如果用户点击上传头像区域但还没有选择图片，显示错误提示
+  if (!isLogin.value && !form.value.avatar) {
+    formErrors.value.avatar = t('auth.validation.avatar.required')
+  }
+}
+
 const handleAvatarUpload = async (event) => {
   const file = event.target.files[0]
   if (!file) return
 
   if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-    ElMessage.error(t('auth.errors.avatarFormat'))
+    ElMessage.error(t('auth.validation.avatar.format'))
     return
   }
 
-  if (file.size > 2 * 1024 * 1024) {
-    ElMessage.error(t('auth.errors.avatarSize'))
+  if (file.size > 10 * 1024 * 1024) {
+    ElMessage.error(t('auth.validation.avatar.size'))
     return
   }
 
@@ -120,6 +139,7 @@ const handleAvatarUpload = async (event) => {
     const avFile = new AV.File(file.name, file)
     const savedFile = await avFile.save()
     form.value.avatar = savedFile.url()
+    formErrors.value.avatar = '' // Clear any avatar error
     ElMessage.success(t('auth.success.avatarUpload'))
   } catch (error) {
     console.error('Avatar upload failed:', error)
@@ -139,7 +159,7 @@ const handleSubmit = async () => {
     
     if (!isLogin.value) {
       let avatarFile = null
-      if (form.value.avatar && form.value.avatar !== '/default-avatar.png') {
+      if (form.value.avatar) {
         const response = await fetch(form.value.avatar)
         if (!response.ok) {
           throw new Error(t('errors.uploadFailed'))
@@ -152,46 +172,105 @@ const handleSubmit = async () => {
         await avatarFile.save()
       }
       
-      await userStore.register(
-        form.value.username,
-        form.value.email,
-        form.value.password,
-        avatarFile
-      )
-      
-      ElMessage.success(t('auth.success.register'))
+      try {
+        const result = await userStore.register(
+          form.value.username,
+          form.value.email,
+          form.value.password,
+          avatarFile
+        )
+        
+        if (result.success) {
+          ElMessage.success(t('auth.success.register'))
+          // Show email verification message
+          ElMessageBox.alert(
+            t('auth.emailVerification.checkInbox'),
+            t('auth.emailVerification.required'),
+            {
+              confirmButtonText: t('common.ok'),
+              type: 'success',
+              showClose: false
+            }
+          )
+          isLogin.value = true
+        }
+      } catch (error) {
+        console.error('Registration error:', error)
+        if (error.message === t('auth.errors.deviceLimit')) {
+          ElMessageBox.alert(
+            t('auth.errors.deviceLimitHelp'),
+            t('auth.errors.deviceLimitTitle'),
+            {
+              confirmButtonText: t('auth.login'),
+              cancelButtonText: t('auth.contactSupport'),
+              type: 'error',
+              showClose: false,
+              showCancelButton: true,
+              callback: (action) => {
+                if (action === 'confirm') {
+                  isLogin.value = true
+                } else if (action === 'cancel') {
+                  router.push('/contact-support')
+                }
+              }
+            }
+          )
+        } else if (error.message === t('auth.errors.usernameExists')) {
+          ElMessage.error(t('auth.errors.usernameExists'))
+        } else if (error.message === t('auth.errors.emailExists')) {
+          ElMessage.error(t('auth.errors.emailExists'))
+        } else {
+          ElMessage.error(error.message || t('auth.errors.registerFailed'))
+        }
+        return // 阻止继续抛出错误
+      }
     } else {
       try {
         await userStore.login(form.value.email, form.value.password)
         ElMessage.success(t('auth.success.login'))
-        router.push('/')
+        router.push(router.currentRoute.value.query.redirect || '/')
       } catch (error) {
-        console.error('Login failed:', error)
-        if (error.message.includes('Email address isn\'t verified')) {
+        if (error.message === t('auth.errors.emailNotVerified')) {
+          ElMessageBox.confirm(
+            t('auth.emailVerification.instruction'),
+            t('auth.emailVerification.required'),
+            {
+              confirmButtonText: t('auth.buttons.verifyEmail'),
+              cancelButtonText: t('common.cancel'),
+              type: 'warning'
+            }
+          ).then(() => {
+            resendVerificationEmail()
+          }).catch(() => {})
+        } else if (error.message === t('auth.errors.invalidPassword')) {
           ElMessage({
-            type: 'warning',
-            message: t('auth.errors.emailNotVerified'),
+            type: 'error',
+            message: t('auth.errors.invalidPassword'),
             duration: 5000,
             showClose: true
           })
-          // 可以在这里添加重新发送验证邮件的逻辑
-        } else if (error.code === 400) {
-          ElMessage.error(t('auth.errors.badRequest'))
+        } else if (error.message === t('auth.errors.userNotFound')) {
+          ElMessage({
+            type: 'error',
+            message: t('auth.errors.userNotFound'),
+            duration: 5000,
+            showClose: true
+          })
+        } else if (error.message === t('auth.errors.tooManyAttempts')) {
+          ElMessage({
+            type: 'error',
+            message: t('auth.errors.tooManyAttempts'),
+            duration: 5000,
+            showClose: true
+          })
         } else {
-          ElMessage.error(t('auth.errors.loginFailed'))
+          ElMessage.error(error.message || t('auth.errors.loginFailed'))
         }
-        return
       }
     }
-    
-    router.push('/')
   } catch (error) {
     console.error(isLogin.value ? 'Login failed:' : 'Registration failed:', error)
-    if (error.code === 400) {
-      ElMessage.error(t('auth.errors.badRequest'))
-    } else {
-      ElMessage.error(error.message || t(isLogin.value ? 'auth.errors.loginFailed' : 'auth.errors.registerFailed'))
-    }
+    // 不再在这里显示错误消息，因为已经在内部 catch 中处理了
   } finally {
     loading.value = false
   }
@@ -225,7 +304,8 @@ const switchMode = () => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    avatar: ''
   }
 }
 
@@ -291,7 +371,7 @@ const handleLogin = async () => {
     loading.value = true
     await userStore.login(form.value.email, form.value.password)
     ElMessage.success(t('auth.login.success'))
-    router.push(route.query.redirect || '/')
+    router.push(router.currentRoute.value.query.redirect || '/')
   } catch (error) {
     if (error.message === 'EMAIL_NOT_VERIFIED') {
       ElMessageBox.confirm(
@@ -328,6 +408,83 @@ const handleResendVerification = async () => {
     loading.value = false
   }
 }
+
+// 谷歌登录相关
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+let googleAuth = null
+
+onMounted(() => {
+  // 加载新版本的 Google Identity Services
+  const script = document.createElement('script')
+  script.src = 'https://accounts.google.com/gsi/client'
+  script.async = true
+  script.defer = true
+  document.head.appendChild(script)
+
+  script.onload = () => {
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: handleGoogleCredentialResponse,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      context: 'signin',
+      ux_mode: 'popup',
+      itp_support: true
+    })
+
+    // 配置按钮
+    window.google.accounts.id.renderButton(
+      document.getElementById('google-login-button'),
+      {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'rectangular',
+        logo_alignment: 'left',
+        width: '100%'
+      }
+    )
+  }
+})
+
+const handleGoogleCredentialResponse = async (response) => {
+  try {
+    if (!response.credential) {
+      console.error('No credential received')
+      ElMessage.error(t('auth.errors.googleLogin'))
+      return
+    }
+
+    // 解码 JWT token 获取用户信息
+    const base64Url = response.credential.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    }).join(''))
+
+    const { sub, email, name, picture } = JSON.parse(jsonPayload)
+
+    const userData = {
+      id: sub,
+      email,
+      name,
+      picture,
+      access_token: response.credential
+    }
+
+    await userStore.loginWithGoogle(userData)
+    ElMessage.success(t('auth.success.googleLogin'))
+    router.push('/')
+  } catch (error) {
+    console.error('Google login error:', error)
+    ElMessage.error(t('auth.errors.googleLogin'))
+  }
+}
+
+const handleGoogleLogin = () => {
+  window.google.accounts.id.prompt()
+}
 </script>
 
 <template>
@@ -341,14 +498,34 @@ const handleResendVerification = async () => {
           <p class="auth-subtitle">{{ isLogin ? t('auth.title.login') : t('auth.title.register') }}</p>
         </div>
         
+        <!-- 添加新用户福利提示 -->
+        <div v-if="!isLogin" class="new-user-benefits">
+          <h3 class="benefits-title">{{ t('auth.newUserBenefits.title') }}</h3>
+          <div class="benefits-items">
+            <div class="benefit-item">
+              <div class="benefit-icon">🎁</div>
+              <div class="benefit-text">{{ t('auth.newUserBenefits.points') }}</div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon">⭐️</div>
+              <div class="benefit-text">{{ t('auth.newUserBenefits.membership') }}</div>
+            </div>
+          </div>
+          <p class="benefits-description">{{ t('auth.newUserBenefits.description') }}</p>
+        </div>
+
         <div v-if="!isLogin" class="avatar-upload">
+          <div class="avatar-tip">{{ t('auth.form.avatar.tip') }}</div>
           <div 
             class="avatar-wrapper"
-            :class="{ 'is-loading': loading }"
-            @click="uploadRef.click()"
+            :class="{ 
+              'is-loading': loading,
+              'has-error': formErrors.avatar 
+            }"
+            @click="triggerAvatarUpload"
           >
-            <template v-if="typeof avatarUrl === 'string'">
-              <img :src="avatarUrl" alt="avatar" class="avatar-preview" />
+            <template v-if="form.avatar">
+              <img :src="form.avatar" class="avatar-preview" :alt="t('auth.form.avatar.upload')" />
             </template>
             <template v-else>
               <div class="default-avatar" :style="{ backgroundColor: avatarUrl.backgroundColor }">
@@ -357,16 +534,17 @@ const handleResendVerification = async () => {
             </template>
             <div class="upload-overlay">
               <el-icon><Plus /></el-icon>
-              <span>{{ t('auth.form.avatar.upload') }}</span>
+              <span>{{ form.avatar ? t('auth.form.avatar.change') : t('auth.form.avatar.upload') }}</span>
             </div>
           </div>
           <input
-            ref="uploadRef"
+            ref="avatarInput"
             type="file"
             accept=".jpg,.jpeg,.png"
             style="display: none"
             @change="handleAvatarUpload"
           />
+          <div v-if="formErrors.avatar" class="error-message text-center">{{ t(formErrors.avatar) }}</div>
         </div>
 
         <form @submit.prevent="handleSubmit" class="auth-form">
@@ -468,6 +646,17 @@ const handleResendVerification = async () => {
             </span>
           </div>
         </div>
+
+        <!-- 添加分割线 -->
+        <div class="divider">
+          <span>{{ t('auth.or') }}</span>
+        </div>
+        
+        <!-- 谷歌登录按钮 -->
+        <div 
+          id="google-login-button"
+          class="google-login-wrapper"
+        ></div>
       </div>
     </div>
   </div>
@@ -511,10 +700,71 @@ const handleResendVerification = async () => {
   font-size: 1rem;
 }
 
+.new-user-benefits {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.benefits-title {
+  color: #FFD700;
+  font-size: 1.2rem;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.benefits-items {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.benefit-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.benefit-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.benefit-text {
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.benefits-description {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  margin-top: 12px;
+}
+
 .avatar-upload {
   margin-bottom: 2rem;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar-tip {
+  color: var(--primary-color);
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  background: rgba(var(--primary-color-rgb), 0.1);
+  border-radius: 0.5rem;
+  width: fit-content;
 }
 
 .default-avatar {
@@ -556,6 +806,11 @@ const handleResendVerification = async () => {
   &:hover {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 4px var(--primary-color-alpha);
+  }
+  
+  &.has-error {
+    border-color: var(--error-color);
+    box-shadow: 0 0 0 2px rgba(var(--error-color-rgb), 0.1);
   }
 }
 
@@ -666,9 +921,14 @@ const handleResendVerification = async () => {
 }
 
 .error-message {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--error-color);
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+  background: rgba(var(--error-color-rgb), 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  width: fit-content;
 }
 
 .submit-btn {
@@ -771,5 +1031,37 @@ const handleResendVerification = async () => {
     width: 100px;
     height: 100px;
   }
+}
+
+.text-center {
+  text-align: center;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  span {
+    padding: 0 1rem;
+    color: var(--text-color-secondary);
+    font-size: 0.875rem;
+  }
+}
+
+.google-login-wrapper {
+  width: 100%;
+  margin-top: 1rem;
+  min-height: 40px;
+  display: flex;
+  justify-content: center;
 }
 </style> 

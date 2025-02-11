@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Song - Turn Photos into Music | AI Photo Music Generator</title>
+    <meta name="description" content="Transform your photos into unique musical pieces with our AI-powered platform. Create personalized songs from your images using advanced AI technology.">
+    <meta name="keywords" content="photo to music, image to music converter, AI music generator, photo song maker">
+    <meta property="og:title" content="Photo Song - Turn Photos into Music">
+    <meta property="og:description" content="Transform your photos into unique musical pieces with our AI-powered platform">
+    <meta property="og:image" content="{{featuredImage}}">
+    <meta property="og:url" content="{{url}}">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="{{url}}">
+    <link rel="stylesheet" href="/assets/styles/main.css">
+</head>
+<body>
+    <main>
+        <section class="hero">
+            <h1>Transform Your Photos into Beautiful Music</h1>
+            <p class="hero-subtitle">Using advanced AI technology to create unique musical pieces from your images</p>
+            <div class="cta-buttons">
+                <a href="/create" class="primary-button">Start Creating</a>
+                <a href="/community" class="secondary-button">Explore Community</a>
+            </div>
+        </section>
+
+        <section class="featured-works">
+            <h2>Featured Creations</h2>
+            <div class="works-grid">
+                {{#featuredWorks}}
+                <div class="work-card">
+                    <img src="{{imageUrl}}" alt="{{title}}" loading="lazy">
+                    <div class="work-info">
+                        <h3>{{title}}</h3>
+                        <p>{{description}}</p>
+                        <div class="work-meta">
+                            <span class="author">By {{author}}</span>
+                            <span class="style">{{style}}</span>
+                        </div>
+                    </div>
+                </div>
+                {{/featuredWorks}}
+            </div>
+        </section>
+
+        <section class="how-it-works">
+            <h2>How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-icon">1</div>
+                    <h3>Upload Your Photo</h3>
+                    <p>Choose any image that inspires you</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon">2</div>
+                    <h3>Select Style</h3>
+                    <p>Pick a musical style that matches your vision</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon">3</div>
+                    <h3>Generate Music</h3>
+                    <p>Our AI creates a unique song based on your photo</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="recent-works">
+            <h2>Recent Creations</h2>
+            <div class="works-grid">
+                {{recentWorks}}
+            </div>
+        </section>
+    </main>
+
+    <script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "WebApplication",
+        "name": "Photo Song",
+        "description": "Transform your photos into unique musical pieces with our AI-powered platform",
+        "url": "{{url}}",
+        "applicationCategory": "Multimedia",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "featureList": [
+            "Convert photos to music",
+            "AI-powered music generation",
+            "Multiple musical styles",
+            "Community sharing"
+        ]
+    }
+    </script>
+</body>
+</html> 

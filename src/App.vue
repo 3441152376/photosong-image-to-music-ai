@@ -1,44 +1,135 @@
 <script setup>
 import { RouterView, useRoute } from 'vue-router'
 import { ElConfigProvider } from 'element-plus'
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
+import en from 'element-plus/dist/locale/en.mjs'
+import ru from 'element-plus/dist/locale/ru.mjs'
 import SeoMeta from './components/SeoMeta.vue'
 import CookieConsent from './components/CookieConsent.vue'
 import { computed, watch, onMounted, nextTick } from 'vue'
+import LoadingScreen from '@/components/LoadingScreen.vue'
+import { useHead } from '@vueuse/head'
+import { enrichMetadata } from './services/contentService'
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
+const { t, locale } = useI18n()
 
+// 根据当前语言获取 Element Plus 的语言配置
+const elementLocale = computed(() => {
+  switch (locale.value) {
+    case 'zh':
+      return zhCn
+    case 'en':
+      return en
+    case 'ru':
+      return ru
+    default:
+      return zhCn
+  }
+})
+
+// 基础 SEO 数据
+const defaultSeoData = computed(() => ({
+  title: t('meta.title'),
+  description: t('meta.description'),
+  keywords: [
+    // 主要关键词
+    'photo music', 'AI music', 'photo song', 'image to music', 
+    'AI music generator', 'photo to song converter',
+    // 中文关键词
+    '图片音乐', 'AI音乐创作', '照片转音乐', '智能音乐生成',
+    '图片配乐', 'AI作曲', '智能作曲',
+    // 俄语关键词
+    'фото музыка', 'ИИ музыка', 'фото в музыку', 
+    'генератор музыки', 'создание музыки по фото',
+    // 长尾关键词
+    'convert photos to music online',
+    'create music from pictures',
+    'turn images into songs AI',
+    'photo music generator app',
+    'AI photo melody creator'
+  ],
+  image: '/og-image.jpg',
+  type: 'website'
+}))
+
+// 计算 SEO 元数据
 const seoMeta = computed(() => {
-  const base = {
-    title: route.meta.title || 'Photo Song - AI 驱动的照片音乐创作平台',
-    description: route.meta.description,
-    keywords: route.meta.keywords,
-    image: route.meta.image
+  const meta = {
+    title: '',
+    description: '',
+    keywords: [],
+    image: defaultSeoData.value.image,
+    type: defaultSeoData.value.type,
+    locale: locale.value
   }
 
-  // 根据不同页面设置不同的 meta 信息
+  // 处理标题
+  if (route.meta?.title) {
+    meta.title = typeof route.meta.title === 'function' 
+      ? route.meta.title(route) 
+      : route.meta.title
+  } else {
+    meta.title = defaultSeoData.value.title
+  }
+
+  // 处理描述
+  if (route.meta?.description) {
+    meta.description = typeof route.meta.description === 'function'
+      ? route.meta.description(route)
+      : route.meta.description
+  } else {
+    meta.description = defaultSeoData.value.description
+  }
+
+  // 处理关键词
+  if (route.meta?.keywords) {
+    meta.keywords = Array.isArray(route.meta.keywords)
+      ? route.meta.keywords
+      : defaultSeoData.value.keywords
+  } else {
+    meta.keywords = defaultSeoData.value.keywords
+  }
+
+  // 处理图片
+  if (route.meta?.image) {
+    meta.image = route.meta.image
+  }
+
+  // 处理类型
+  if (route.meta?.type) {
+    meta.type = route.meta.type
+  }
+
+  // 根据不同页面类型处理特殊元数据
   switch (route.name) {
     case 'work':
-      // 作品详情页
-      if (route.meta.work) {
-        return {
-          title: `${route.meta.work.title} - Photo Song`,
-          description: route.meta.work.description,
-          image: route.meta.work.imageUrl
-        }
+      if (route.meta?.work) {
+        meta.title = t('work.meta.title', {
+          title: route.meta.work.title,
+          author: route.meta.work.author?.username
+        })
+        meta.description = route.meta.work.description || meta.description
+        meta.image = route.meta.work.imageUrl || meta.image
+        meta.type = 'article'
       }
       break
     case 'profile':
-      // 用户主页
-      if (route.meta.user) {
-        return {
-          title: `${route.meta.user.username} 的主页 - Photo Song`,
-          description: `查看 ${route.meta.user.username} 在 Photo Song 上的创作作品`
-        }
+      if (route.meta?.user) {
+        meta.title = t('profile.meta.title', {
+          username: route.meta.user.username
+        })
+        meta.description = t('profile.meta.description', {
+          username: route.meta.user.username
+        })
+        meta.image = route.meta.user.avatar || meta.image
+        meta.type = 'profile'
       }
       break
   }
 
-  return base
+  return meta
 })
 
 // 监听路由变化
@@ -54,20 +145,268 @@ watch(
   }
 )
 
+// 监听语言变化
+watch(
+  () => locale.value,
+  (newLocale) => {
+    // 更新 HTML lang 属性
+    document.querySelector('html').setAttribute('lang', newLocale)
+    // 保存语言设置
+    localStorage.setItem('language', newLocale)
+    // 强制更新 SEO 元数据
+    nextTick(() => {
+      window.dispatchEvent(new Event('languageChanged'))
+    })
+  },
+  { immediate: true }
+)
+
 // 组件挂载时的处理
 onMounted(() => {
   // 初始化时滚动到顶部
   window.scrollTo(0, 0)
+  
+  // 设置初始语言
+  const savedLocale = localStorage.getItem('language')
+  if (savedLocale && ['zh', 'en', 'ru'].includes(savedLocale)) {
+    locale.value = savedLocale
+  } else {
+    const browserLocale = navigator.language.split('-')[0]
+    locale.value = ['zh', 'en', 'ru'].includes(browserLocale) ? browserLocale : 'zh'
+  }
+})
+
+const currentUrl = computed(() => `https://photosong.com${route.fullPath}`)
+
+// 添加结构化数据
+const structuredData = computed(() => {
+  if (!seoMeta.value) return {}
+
+  const baseData = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: seoMeta.value.title,
+    description: seoMeta.value.description,
+    url: window.location.origin,
+    inLanguage: locale.value,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${window.location.origin}/search?q={search_term_string}`,
+      'query-input': 'required name=search_term_string'
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'PhotoSong',
+      logo: {
+        '@type': 'ImageObject',
+        url: `${window.location.origin}/logo.png`
+      }
+    },
+    offers: {
+      '@type': 'AggregateOffer',
+      priceCurrency: 'USD',
+      lowPrice: '0',
+      highPrice: '99',
+      offerCount: '3'
+    }
+  }
+
+  // 根据不同页面类型添加不同的结构化数据
+  switch (route.name) {
+    case 'work':
+      if (route.meta?.work) {
+        return {
+          '@context': 'https://schema.org',
+          '@type': 'MusicComposition',
+          name: seoMeta.value.title,
+          description: seoMeta.value.description,
+          image: seoMeta.value.image,
+          datePublished: route.meta.work.createdAt,
+          dateModified: route.meta.work.updatedAt,
+          inLanguage: locale.value,
+          author: {
+            '@type': 'Person',
+            name: route.meta.work.author?.username,
+            image: route.meta.work.author?.avatar
+          },
+          publisher: baseData.publisher,
+          genre: route.meta.work.style,
+          isPartOf: {
+            '@type': 'CreativeWork',
+            name: 'PhotoSong Community',
+            url: `${window.location.origin}/community`
+          },
+          potentialAction: {
+            '@type': 'ListenAction',
+            target: window.location.href
+          }
+        }
+      }
+      return baseData
+    case 'profile':
+      if (route.meta?.user) {
+        return {
+          '@context': 'https://schema.org',
+          '@type': 'ProfilePage',
+          name: seoMeta.value.title,
+          description: seoMeta.value.description,
+          inLanguage: locale.value,
+          mainEntity: {
+            '@type': 'Person',
+            name: route.meta.user.username,
+            image: route.meta.user.avatar,
+            url: window.location.href,
+            worksFor: baseData.publisher,
+            knowsAbout: ['Music', 'AI Music Generation', 'Photography'],
+            interactionStatistic: {
+              '@type': 'InteractionCounter',
+              interactionType: 'https://schema.org/CreateAction',
+              userInteractionCount: route.meta.user.worksCount || 0
+            }
+          }
+        }
+      }
+      return baseData
+    case 'community':
+      return {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: seoMeta.value.title,
+        description: seoMeta.value.description,
+        inLanguage: locale.value,
+        publisher: baseData.publisher,
+        isPartOf: {
+          '@type': 'WebSite',
+          name: 'PhotoSong',
+          url: window.location.origin
+        }
+      }
+    case 'articles':
+      return {
+        '@context': 'https://schema.org',
+        '@type': 'Blog',
+        name: seoMeta.value.title,
+        description: seoMeta.value.description,
+        inLanguage: locale.value,
+        publisher: baseData.publisher,
+        isPartOf: {
+          '@type': 'WebSite',
+          name: 'PhotoSong',
+          url: window.location.origin
+        }
+      }
+    default:
+      return baseData
+  }
+})
+
+useHead({
+  title: computed(() => seoMeta.value?.title),
+  htmlAttrs: {
+    lang: computed(() => locale.value)
+  },
+  meta: [
+    { name: 'description', content: computed(() => seoMeta.value?.description) },
+    { name: 'keywords', content: computed(() => seoMeta.value?.keywords?.join(', ')) },
+    // 移动端优化
+    { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=5' },
+    { name: 'format-detection', content: 'telephone=no' },
+    { name: 'theme-color', content: '#4F46E5' },
+    // PWA 相关
+    { name: 'application-name', content: 'PhotoSong' },
+    { name: 'apple-mobile-web-app-title', content: 'PhotoSong' },
+    { name: 'apple-mobile-web-app-capable', content: 'yes' },
+    { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+    // Open Graph 增强
+    { property: 'og:title', content: computed(() => seoMeta.value?.title) },
+    { property: 'og:description', content: computed(() => seoMeta.value?.description) },
+    { property: 'og:image', content: computed(() => seoMeta.value?.image) },
+    { property: 'og:type', content: computed(() => seoMeta.value?.type) },
+    { property: 'og:url', content: computed(() => window.location.href) },
+    { property: 'og:locale', content: computed(() => locale.value) },
+    { property: 'og:site_name', content: 'PhotoSong' },
+    { property: 'og:updated_time', content: computed(() => new Date().toISOString()) },
+    // Twitter Cards
+    { name: 'twitter:card', content: computed(() => seoMeta.value?.image ? 'summary_large_image' : 'summary') },
+    { name: 'twitter:site', content: '@PhotoSong' },
+    { name: 'twitter:creator', content: '@PhotoSong' },
+    { name: 'twitter:title', content: computed(() => seoMeta.value?.title) },
+    { name: 'twitter:description', content: computed(() => seoMeta.value?.description) },
+    { name: 'twitter:image', content: computed(() => seoMeta.value?.image) },
+    // 文章特定元数据
+    { name: 'article:published_time', content: computed(() => seoMeta.value?.publishDate) },
+    { name: 'article:modified_time', content: computed(() => seoMeta.value?.modifiedTime) },
+    { name: 'article:author', content: computed(() => seoMeta.value?.author) },
+    { name: 'article:section', content: computed(() => seoMeta.value?.section) },
+    // 其他重要meta标签
+    { name: 'robots', content: 'index, follow, max-image-preview:large' },
+    { name: 'canonical', content: computed(() => window.location.href) },
+    { name: 'language', content: computed(() => locale.value) }
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      children: computed(() => JSON.stringify(structuredData.value))
+    }
+  ],
+  link: [
+    {
+      rel: 'preconnect',
+      href: 'https://lc-gluttony.s3.amazonaws.com'
+    },
+    {
+      rel: 'preload',
+      href: '/fonts/inter-regular.woff2',
+      as: 'font',
+      type: 'font/woff2',
+      crossorigin: 'anonymous'
+    },
+    {
+      rel: 'preload',
+      href: '/icons/play.svg',
+      as: 'image',
+      type: 'image/svg+xml'
+    },
+    {
+      rel: 'apple-touch-icon',
+      sizes: '180x180',
+      href: '/apple-touch-icon.png'
+    },
+    {
+      rel: 'icon',
+      type: 'image/png',
+      sizes: '32x32',
+      href: '/favicon-32x32.png'
+    },
+    {
+      rel: 'icon',
+      type: 'image/png',
+      sizes: '16x16',
+      href: '/favicon-16x16.png'
+    },
+    {
+      rel: 'manifest',
+      href: '/site.webmanifest'
+    }
+  ]
 })
 </script>
 
 <template>
-  <el-config-provider>
-    <SeoMeta v-bind="seoMeta" />
-    <RouterView :key="route.fullPath" v-slot="{ Component }">
-      <component :is="Component" :key="route.fullPath" />
-    </RouterView>
+  <LoadingScreen />
+  <el-config-provider :locale="elementLocale">
+    <SeoMeta
+      :title="seoMeta.title || defaultSeoData.title"
+      :description="seoMeta.description || defaultSeoData.description"
+      :keywords="seoMeta.keywords || defaultSeoData.keywords"
+      :image="seoMeta.image || defaultSeoData.image"
+      :type="seoMeta.type || defaultSeoData.type"
+      :locale="locale"
+    />
     <CookieConsent />
+    <RouterView v-slot="{ Component }">
+      <component :is="Component" />
+    </RouterView>
   </el-config-provider>
 </template>
 

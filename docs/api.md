@@ -1,205 +1,470 @@
-# Stripe支付系统前端对接文档
+# PhotoSong 支付 API 文档
 
-## 基本信息
+## 基础信息
 
-- 接口基础URL: 
-  - 生产环境：`https://pay.photosong.com/api`
-  - 测试环境：`http://localhost:3002/api`
-- 所有请求和响应均使用JSON格式
-- 所有金额均以美元计价
-- API 限流：每个IP每分钟最多100次请求
-- 并发请求：支持并发，建议单个客户端并发不超过10个请求
+- 基础URL: `https://pay.photosong.com/api`
+- 所有请求都应该使用 HTTPS
+- 所有响应都是 JSON 格式
 
-## 可用的商品套餐
-
-| 套餐名称 | 价格(USD) | 价格ID | 说明 |
-|---------|-----------|--------|------|
-| Starter Plan | $5 | `price_1QlYNRHVMy0i1BlJA1y0DxB2` | 入门套餐 |
-| Advanced Plan | $15 | `price_1QlYO1HVMy0i1BlJyDD3GlsN` | 高级套餐 |
-| Professional Plan | $99 | `price_1QlYOaHVMy0i1BlJ1ZpdOMAO` | 专业套餐 |
-| Lifetime Plan | $400 | `price_1QlYOrHVMy0i1BlJDHxIswM7` | 终身套餐 |
-| Small Points Pack | $2 | `price_1Qme87HVMy0i1BlJR1PRWOgz` | 小额积分包 |
-| Medium Points Pack | $5 | `price_1Qme9BHVMy0i1BlJwFyjwZwj` | 中额积分包 |
-| Large Points Pack | $12 | `price_1QmeA6HVMy0i1BlJQD5dc34Z` | 大额积分包 |
-
-## API接口
+## 接口列表
 
 ### 1. 创建支付会话
 
-**请求方式：** POST  
-**接口地址：** `/create-checkout-session`  
-**Content-Type：** `application/json`
+**请求**
+- 方法: `POST`
+- 路径: `/create-checkout-session`
+- Content-Type: `application/json`
+
+**请求参数**
+```json
+{
+  "priceId": "price_xxx",  // Stripe价格ID，系统会自动检测是订阅还是一次性支付
+  "metadata": {
+    "userId": "用户ID",
+    "userEmail": "用户邮箱",
+    "username": "用户名",
+    "locale": "语言",
+    "planType": "计划类型",
+    "plan": "计划名称",
+    "timestamp": "时间戳",
+    "priceId": "价格ID"
+  },
+  "paymentMethodTypes": ["card"],  // 可选，默认为 ["card"]
+  "successUrl": "支付成功跳转URL",
+  "cancelUrl": "支付取消跳转URL",
+  "customerEmail": "客户邮箱",
+  "allowPromotionCodes": false,    // 可选，默认为 false
+  "locale": "zh"                   // 可选，默认为 "zh"
+}
+```
+
+**说明**
+- 系统会自动检测 `priceId` 对应的价格类型：
+  - 如果是循环付费价格（recurring），将自动使用 `subscription` 模式
+  - 如果是一次性价格，将自动使用 `payment` 模式
+- 不需要手动指定 `mode` 参数，系统会自动处理
+
+**响应**
+```json
+{
+  "id": "cs_live_xxx",
+  "url": "https://checkout.stripe.com/xxx",
+  "status": "open"
+}
+```
+
+**错误响应**
+除了通用错误响应外，还可能出现以下特定错误：
+```json
+{
+  "error": "Invalid metadata",
+  "details": "Missing required metadata fields: field1, field2"
+}
+```
+或
+```json
+{
+  "error": "server_error",
+  "message": "Failed to create checkout session",
+  "details": "具体错误信息"
+}
+```
+
+### 2. 查询支付状态
+
+**请求**
+- 方法: `GET`
+- 路径: `/check-payment-status/:sessionId`
+
+**响应**
+```json
+{
+  "status": "unpaid",
+  "amount_total": 500,
+  "currency": "usd",
+  "customer": "cus_xxx",
+  "payment_intent": "pi_xxx",
+  "metadata": {
+    // 支付会话的元数据
+  }
+}
+```
+
+### 3. 查询支付会话元数据
+
+**请求**
+- 方法: `GET`
+- 路径: `/payment/metadata/:sessionId`
+
+**响应**
+```json
+{
+  "status": "unpaid",
+  "amount": 500,
+  "currency": "usd",
+  "paymentIntent": {
+    "id": "pi_xxx",
+    "status": "succeeded"
+  },
+  "customer": "cus_xxx",
+  "lineItems": {
+    // 商品明细
+  },
+  "metadata": {
+    // 支付会话的元数据
+  },
+  "createdAt": "2024-02-02T20:00:00Z",
+  "expiresAt": "2024-02-03T20:00:00Z"
+}
+```
+
+### 4. 记录支付取消
+
+**请求**
+- 方法: `POST`
+- 路径: `/payment/cancel`
+- Content-Type: `application/json`
+
+**请求参数**
+```json
+{
+  "sessionId": "cs_live_xxx",
+  "reason": "取消原因",
+  "feedback": "取消反馈",
+  "timestamp": "取消时间"
+}
+```
+
+**响应**
+```json
+{
+  "success": true,
+  "message": "Cancel recorded",
+  "cancelInfo": {
+    "sessionId": "cs_live_xxx",
+    "originalStatus": "open",
+    "cancelReason": "price_too_high",
+    "cancelFeedback": "价格太贵了",
+    "canceledAt": "2024-02-02T20:00:00Z",
+    "metadata": {
+      // 支付会话的元数据
+    }
+  }
+}
+```
+
+## 错误响应
+
+所有接口在发生错误时都会返回统一的错误格式：
+
+```json
+{
+  "error": "error_type",
+  "message": "错误描述",
+  "details": "详细错误信息"
+}
+```
+
+常见错误类型：
+- `server_error`: 服务器内部错误
+- `invalid_request`: 请求参数错误
+- `invalid_metadata`: 元数据字段缺失或无效
+
+## 目录
+- [基本信息](#基本信息)
+- [接口说明](#接口说明)
+- [支付流程](#支付流程)
+- [错误处理](#错误处理)
+- [测试指南](#测试指南)
+
+## 基本信息
+
+### 环境信息
+| 环境 | 接口域名 |
+|------|----------|
+| 生产环境 | `https://pay.photosong.com` |
+| 测试环境 | `http://localhost:3002` |
+
+### 通用说明
+- 接口采用 RESTful 规范
+- 请求与响应均使用 JSON 格式
+- 时间格式：ISO 8601 标准
+- 货币单位：美元（USD）
+- 金额单位：分（cent）
+
+## 接口说明
+
+### 1. 创建支付会话
+
+**接口地址：** `POST /api/create-checkout-session`
 
 **请求参数：**
 ```json
 {
-  "priceId": "price_xxx" // 使用上面列出的价格ID
+    "priceId": "price_xxx" // Stripe价格ID
 }
 ```
 
-**成功响应：**
+**响应数据：**
 ```json
 {
-  "url": "https://checkout.stripe.com/xxx", // Stripe支付页面URL
-  "sessionId": "cs_xxx" // 支付会话ID，用于后续查询支付状态
+    "url": "https://checkout.stripe.com/xxx" // 支付页面URL
 }
 ```
 
-**错误响应：**
-```json
-{
-  "error": {
-    "code": "error_code",
-    "message": "错误信息",
-    "type": "error_type"
-  }
-}
-```
-
-**错误码说明：**
-| 错误码 | 说明 | 处理建议 |
-|--------|------|----------|
-| invalid_price_id | 无效的价格ID | 检查价格ID是否正确 |
-| price_not_found | 价格不存在 | 确认价格ID是否已失效 |
-| currency_not_supported | 不支持的货币 | 使用支持的货币类型 |
-| amount_too_small | 金额太小 | 确保金额大于最小支付限额 |
-| amount_too_large | 金额太大 | 确保金额小于最大支付限额 |
-| rate_limit_exceeded | 超出请求限制 | 降低请求频率 |
+**可用价格ID：**
+| 套餐名称 | 价格(USD) | 价格ID | 说明 |
+|---------|-----------|--------|------|
+| Starter Plan | $5 | price_1QlYNRHVMy0i1BlJA1y0DxB2 | 入门套餐 |
+| Advanced Plan | $15 | price_1QlYO1HVMy0i1BlJyDD3GlsN | 高级套餐 |
+| Professional Plan | $99 | price_1QlYOaHVMy0i1BlJ1ZpdOMAO | 专业套餐 |
+| Lifetime Plan | $400 | price_1QlYOrHVMy0i1BlJDHxIswM7 | 终身套餐 |
+| Small Points | $2 | price_1Qme87HVMy0i1BlJR1PRWOgz | 小额积分包 |
+| Medium Points | $5 | price_1Qme9BHVMy0i1BlJwFyjwZwj | 中额积分包 |
+| Large Points | $12 | price_1QmeA6HVMy0i1BlJQD5dc34Z | 大额积分包 |
 
 ### 2. 查询支付状态
 
-**请求方式：** GET  
-**接口地址：** `/check-payment-status/:sessionId`  
-**参数说明：** sessionId 为支付会话ID，从支付成功回调URL中获取
+**接口地址：** 
+- `GET /api/check-payment-status/{CHECKOUT_SESSION_ID}`
+- `GET /api/payment/check/{CHECKOUT_SESSION_ID}`
 
-**成功响应：**
+**路径参数：**
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| CHECKOUT_SESSION_ID | string | 是 | 支付会话ID |
+
+**响应数据：**
 ```json
 {
-  "status": "paid" // 支付状态
+    "status": "paid",          // 支付状态
+    "amount": 500,             // 支付金额（分）
+    "currency": "usd",         // 货币类型
+    "paymentIntent": "pi_xxx", // 支付意向ID
+    "customer": "cus_xxx"      // 客户ID
 }
 ```
 
-**支付状态说明：**
-| 状态 | 说明 | 后续处理建议 |
-|------|------|--------------|
-| paid | 支付成功 | 可以开始提供服务 |
+**状态说明：**
+| 状态值 | 说明 | 处理建议 |
+|--------|------|----------|
+| paid | 支付成功 | 开始提供服务 |
 | unpaid | 未支付 | 等待用户完成支付 |
-| processing | 处理中 | 等待最终支付结果 |
-| expired | 已过期 | 需要重新发起支付 |
-| failed | 支付失败 | 检查失败原因，可能需要重新支付 |
-| canceled | 已取消 | 支付已被取消，需要重新发起 |
-| no_payment_required | 无需支付 | 可以直接提供服务 |
+| expired | 已过期 | 建议重新发起支付 |
+| canceled | 已取消 | 可以重新发起支付 |
 
-### 3. Webhook 事件处理
+## 支付流程
 
-**Webhook 接口地址：** `/api/stripe/webhook`  
-**Content-Type：** `application/json`  
-**签名验证：** 需要验证 `stripe-signature` 请求头
+1. 创建支付会话
+   ```javascript
+   const response = await fetch('https://pay.photosong.com/api/create-checkout-session', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ priceId: 'price_xxx' })
+   });
+   const { url } = await response.json();
+   ```
 
-**主要事件类型：**
-| 事件类型 | 说明 | 处理建议 |
-|----------|------|----------|
-| checkout.session.completed | 支付会话完成 | 更新订单状态，开始提供服务 |
-| checkout.session.expired | 支付会话过期 | 标记订单为过期状态 |
-| payment_intent.succeeded | 支付意向成功 | 确认付款已完成 |
-| payment_intent.payment_failed | 支付失败 | 记录失败原因，通知用户 |
-| charge.succeeded | 收费成功 | 更新支付记录 |
-| charge.failed | 收费失败 | 记录失败原因 |
+2. 重定向到支付页面
+   ```javascript
+   window.location.href = url;
+   ```
 
-**Webhook 测试：**
-1. 使用 Stripe CLI 进行本地测试：
-```bash
-stripe listen --forward-to localhost:3002/api/stripe/webhook
+3. 查询支付状态
+   ```javascript
+   const response = await fetch(
+       `https://pay.photosong.com/api/check-payment-status/${sessionId}`
+   );
+   const result = await response.json();
+   ```
+
+## 错误处理
+
+### HTTP 状态码
+| 状态码 | 说明 | 处理建议 |
+|--------|------|----------|
+| 200 | 请求成功 | - |
+| 400 | 参数错误 | 检查请求参数 |
+| 401 | 未授权 | 检查认证信息 |
+| 404 | 资源不存在 | 检查ID是否正确 |
+| 500 | 服务器错误 | 稍后重试 |
+
+### 错误响应格式
+```json
+{
+    "error": "错误信息描述"
+}
 ```
 
-2. 使用 Stripe Dashboard 发送测试事件
+## 测试指南
 
-## 前端集成示例
+### 测试卡号
+```
+成功卡号：4242 4242 4242 4242
+失败卡号：4000 0000 0000 0002
+有效期：任何未来日期
+CVC：任意三位数
+邮编：任意五位数
+```
 
-### React/Next.js 示例代码
+### 接口测试示例
 
-```typescript
-// types.ts
-interface PaymentSession {
-  url: string;
-  sessionId: string;
-}
+1. 创建支付会话：
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"priceId": "price_1QlYNRHVMy0i1BlJA1y0DxB2"}' \
+  https://pay.photosong.com/api/create-checkout-session
+```
 
-interface PaymentStatus {
-  status: PaymentStatusType;
-}
+2. 查询支付状态：
+```bash
+curl https://pay.photosong.com/api/check-payment-status/cs_test_xxx
+```
 
-type PaymentStatusType = 
-  | 'paid'
-  | 'unpaid'
-  | 'processing'
-  | 'expired'
-  | 'failed'
-  | 'canceled'
-  | 'no_payment_required';
+### 测试工具
+- [在线测试页面](https://pay.photosong.com/test.html)
+- [Stripe 测试面板](https://dashboard.stripe.com/test/payments)
 
-// api.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pay.photosong.com/api';
+## 最佳实践
 
-export const createCheckoutSession = async (priceId: string): Promise<PaymentSession> => {
-  const response = await fetch(`${API_BASE_URL}/create-checkout-session`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ priceId }),
-  });
+1. 支付状态查询
+   - 实现轮询机制
+   - 合理设置重试间隔
+   - 处理超时情况
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to create checkout session');
+2. 错误处理
+   - 记录详细错误日志
+   - 实现优雅降级
+   - 提供友好错误提示
+
+3. 安全建议
+   - 使用 HTTPS
+   - 验证所有输入
+   - 实现请求签名
+
+## 更新日志
+
+### v1.2.0 (2024-02-25)
+- 添加积分套餐支持
+- 完善支付状态查询
+- 优化错误处理
+
+### v1.1.0 (2024-02-20)
+- 添加新的支付状态
+- 完善错误处理
+- 补充接口文档
+
+### v1.0.0 (2024-02-01)
+- 初始版本发布 
+
+## 代码示例
+
+### JavaScript/TypeScript (使用 axios)
+
+```javascript
+// 创建支付会话
+const createCheckoutSession = async (priceId, userInfo) => {
+  try {
+    const response = await axios.post('https://pay.photosong.com/api/create-checkout-session', {
+      priceId,
+      metadata: {
+        userId: userInfo.id,
+        userEmail: userInfo.email,
+        username: userInfo.name,
+        locale: 'zh',
+        planType: 'premium',
+        plan: 'yearly',
+        timestamp: new Date().toISOString(),
+        priceId
+      },
+      successUrl: 'https://photosong.com/payment/success?session_id={CHECKOUT_SESSION_ID}',
+      cancelUrl: 'https://photosong.com/payment/cancel',
+      customerEmail: userInfo.email,
+      allowPromotionCodes: true
+    });
+
+    // 重定向到 Stripe Checkout 页面
+    window.location.href = response.data.url;
+  } catch (error) {
+    console.error('支付会话创建失败:', error.response?.data || error.message);
+    throw error;
   }
-
-  return response.json();
 };
 
-export const checkPaymentStatus = async (sessionId: string): Promise<PaymentStatus> => {
-  const response = await fetch(`${API_BASE_URL}/check-payment-status/${sessionId}`);
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to check payment status');
+// 查询支付状态
+const checkPaymentStatus = async (sessionId) => {
+  try {
+    const response = await axios.get(`https://pay.photosong.com/api/check-payment-status/${sessionId}`);
+    return response.data;
+  } catch (error) {
+    console.error('支付状态查询失败:', error.response?.data || error.message);
+    throw error;
   }
-
-  return response.json();
 };
 
-// PaymentButton.tsx
+// 记录支付取消
+const recordPaymentCancel = async (sessionId, reason) => {
+  try {
+    const response = await axios.post('https://pay.photosong.com/api/payment/cancel', {
+      sessionId,
+      reason,
+      feedback: '价格太贵了',
+      timestamp: new Date().toISOString()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('取消记录失败:', error.response?.data || error.message);
+    throw error;
+  }
+};
+```
+
+### React 组件示例
+
+```tsx
 import { useState } from 'react';
-import { createCheckoutSession } from './api';
+import axios from 'axios';
 
-interface PaymentButtonProps {
+interface PaymentProps {
   priceId: string;
-  planName: string;
-  onSuccess?: () => void;
-  onError?: (error: Error) => void;
+  userInfo: {
+    id: string;
+    email: string;
+    name: string;
+  };
 }
 
-export const PaymentButton: React.FC<PaymentButtonProps> = ({
-  priceId,
-  planName,
-  onSuccess,
-  onError
-}) => {
+const PaymentButton: React.FC<PaymentProps> = ({ priceId, userInfo }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handlePayment = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      const { url } = await createCheckoutSession(priceId);
-      onSuccess?.();
-      window.location.href = url;
+      const response = await axios.post('https://pay.photosong.com/api/create-checkout-session', {
+        priceId,
+        metadata: {
+          userId: userInfo.id,
+          userEmail: userInfo.email,
+          username: userInfo.name,
+          locale: 'zh',
+          planType: 'premium',
+          plan: 'yearly',
+          timestamp: new Date().toISOString(),
+          priceId
+        },
+        successUrl: 'https://photosong.com/payment/success?session_id={CHECKOUT_SESSION_ID}',
+        cancelUrl: 'https://photosong.com/payment/cancel',
+        customerEmail: userInfo.email
+      });
+
+      // 重定向到支付页面
+      window.location.href = response.data.url;
     } catch (err) {
-      const error = err as Error;
-      setError(error.message);
-      onError?.(error);
+      setError(err.response?.data?.message || '支付初始化失败');
     } finally {
       setLoading(false);
     }
@@ -210,215 +475,524 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
       <button 
         onClick={handlePayment} 
         disabled={loading}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+        className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:opacity-50"
       >
-        {loading ? '处理中...' : `购买 ${planName}`}
+        {loading ? '处理中...' : '立即支付'}
       </button>
-      {error && (
-        <p className="mt-2 text-red-500 text-sm">{error}</p>
-      )}
+      {error && <p className="text-red-500 mt-2">{error}</p>}
     </div>
   );
 };
 
-// SuccessPage.tsx
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { checkPaymentStatus } from './api';
-import type { PaymentStatusType } from './types';
-
-export const SuccessPage: React.FC = () => {
-  const router = useRouter();
-  const [status, setStatus] = useState<PaymentStatusType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const sessionId = router.query.session_id as string;
-    if (sessionId) {
-      const checkStatus = async () => {
-        try {
-          const result = await checkPaymentStatus(sessionId);
-          setStatus(result.status);
-          
-          // 如果支付还在处理中，继续轮询
-          if (result.status === 'processing') {
-            setTimeout(checkStatus, 2000);
-          }
-        } catch (err) {
-          setError((err as Error).message);
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      checkStatus();
-    }
-  }, [router.query.session_id]);
-
-  if (loading) return <div>正在确认支付状态...</div>;
-  if (error) return <div className="text-red-500">错误：{error}</div>;
-
-  return (
-    <div className="p-4">
-      {status === 'paid' && (
-        <div className="text-green-500">
-          <h1 className="text-2xl font-bold">支付成功！</h1>
-          <p>您的订单已确认，我们会立即开始处理。</p>
-        </div>
-      )}
-      {status === 'processing' && (
-        <div className="text-yellow-500">
-          <h1 className="text-2xl font-bold">支付处理中</h1>
-          <p>请稍候，我们正在确认您的支付...</p>
-        </div>
-      )}
-      {status === 'unpaid' && (
-        <div className="text-red-500">
-          <h1 className="text-2xl font-bold">支付未完成</h1>
-          <p>您的支付尚未完成，请重试。</p>
-        </div>
-      )}
-      {(status === 'expired' || status === 'failed' || status === 'canceled') && (
-        <div className="text-red-500">
-          <h1 className="text-2xl font-bold">支付失败</h1>
-          <p>很抱歉，您的支付未能完成。请重新尝试。</p>
-          <button 
-            onClick={() => router.push('/')}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            返回首页
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
+export default PaymentButton;
 ```
 
-## 完整支付流程
+### Python 示例
 
-1. 用户选择商品，点击支付按钮
-2. 前端调用 `createCheckoutSession` API，传入对应商品的 `priceId`
-3. 获取到支付URL后，将用户重定向到Stripe支付页面
-4. 用户在Stripe页面完成支付
-5. Stripe将用户重定向回success_url（带有session_id参数）
-6. 前端使用session_id调用 `checkPaymentStatus` API确认支付状态
-7. 如果状态为processing，使用轮询方式继续查询
-8. 后端通过webhook接收到支付成功通知，更新订单状态
-9. 前端确认支付成功后，更新UI并开始提供服务
+```python
+import requests
+from datetime import datetime
 
-## 测试
+class PaymentAPI:
+    def __init__(self, base_url='https://pay.photosong.com/api'):
+        self.base_url = base_url
+
+    def create_checkout_session(self, price_id, user_info):
+        url = f"{self.base_url}/create-checkout-session"
+        
+        payload = {
+            "priceId": price_id,
+            "metadata": {
+                "userId": user_info["id"],
+                "userEmail": user_info["email"],
+                "username": user_info["name"],
+                "locale": "zh",
+                "planType": "premium",
+                "plan": "yearly",
+                "timestamp": datetime.utcnow().isoformat(),
+                "priceId": price_id
+            },
+            "successUrl": "https://photosong.com/payment/success?session_id={CHECKOUT_SESSION_ID}",
+            "cancelUrl": "https://photosong.com/payment/cancel",
+            "customerEmail": user_info["email"]
+        }
+
+        try:
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error creating checkout session: {e}")
+            raise
+
+    def check_payment_status(self, session_id):
+        url = f"{self.base_url}/check-payment-status/{session_id}"
+        
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error checking payment status: {e}")
+            raise
+
+# 使用示例
+payment_api = PaymentAPI()
+
+# 创建支付会话
+user_info = {
+    "id": "user_123",
+    "email": "user@example.com",
+    "name": "Test User"
+}
+
+try:
+    session = payment_api.create_checkout_session("price_xxx", user_info)
+    print(f"Checkout URL: {session['url']}")
+except Exception as e:
+    print(f"Payment failed: {e}")
+```
+
+### 错误处理最佳实践
+
+```javascript
+// 统一错误处理
+const handlePaymentError = (error) => {
+  if (error.response) {
+    // 服务器返回的错误
+    const { status, data } = error.response;
+    
+    switch (status) {
+      case 400:
+        // 处理请求参数错误
+        if (data.error === 'Invalid metadata') {
+          return `缺少必要的支付信息: ${data.details}`;
+        }
+        return '请求参数错误，请检查输入';
+        
+      case 401:
+        return '未授权的访问，请先登录';
+        
+      case 500:
+        if (data.error === 'server_error') {
+          return `服务器处理失败: ${data.message}`;
+        }
+        return '服务器内部错误，请稍后重试';
+        
+      default:
+        return '支付服务暂时不可用，请稍后重试';
+    }
+  }
+  
+  if (error.request) {
+    // 请求发送失败
+    return '网络连接失败，请检查网络设置';
+  }
+  
+  // 其他错误
+  return '支付初始化失败，请重试';
+};
+
+// 使用示例
+try {
+  await createCheckoutSession(priceId, userInfo);
+} catch (error) {
+  const errorMessage = handlePaymentError(error);
+  showErrorToast(errorMessage);
+}
+```
+
+## 测试指南
 
 ### 测试卡号
+- Visa 成功: 4242 4242 4242 4242
+- Visa 失败: 4000 0000 0000 0002
+- 需要 3D 验证: 4000 0000 0000 3220
 
-1. 支付成功场景：
-- 普通支付：4242 4242 4242 4242
-- 3D Secure成功：4000 0000 0000 3220
-- 需要认证：4000 0000 0000 3063
+### 测试流程
+1. 使用测试价格 ID（以 `price_test_` 开头）
+2. 填写测试卡信息：
+   - 卡号：使用上述测试卡号
+   - 有效期：任何未来日期
+   - CVC：任意三位数
+   - 持卡人姓名：任意名称
+3. 使用测试邮箱（如 `test@example.com`）
 
-2. 支付失败场景：
-- 一般失败：4000 0000 0000 0002
-- 余额不足：4000 0000 0000 9995
-- 卡片被拒：4000 0000 0000 0069
-- 欺诈检测：4100 0000 0000 0019
+### 测试流程
+1. 使用测试价格 ID（以 `price_test_` 开头）
+2. 填写测试卡信息：
+   - 卡号：使用上述测试卡号
+   - 有效期：任何未来日期
+   - CVC：任意三位数
+   - 持卡人姓名：任意名称
+3. 使用测试邮箱（如 `test@example.com`）
 
-3. 特殊场景：
-- 3D Secure失败：4000 0000 0000 3063
-- 处理中：4000 0000 0000 3089
-- 货币不支持：4000 0000 0000 0010
+完整参考
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoSong 支付测试</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- 标题 -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">PhotoSong 支付测试</h1>
+            <p class="text-gray-600">用于测试支付流程的各个环节</p>
+        </div>
 
-所有测试卡的其他信息：
-- 有效期：任何未来日期（MM/YY）
-- CVC：任意三位数
-- 姓名：任意
-- 邮编：任意5位数字
+        <!-- 测试配置 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">测试配置</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">API 基础地址</label>
+                    <input type="text" v-model="config.apiBase" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="例如: https://pay.photosong.com/api">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">价格 ID</label>
+                    <select v-model="config.priceId" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="price_1QlYNRHVMy0i1BlJA1y0DxB2">Starter Plan ($5)</option>
+                        <option value="price_1QlYO1HVMy0i1BlJyDD3GlsN">Advanced Plan ($15)</option>
+                        <option value="price_1QlYOaHVMy0i1BlJ1ZpdOMAO">Professional Plan ($99)</option>
+                        <option value="price_1QlYOrHVMy0i1BlJDHxIswM7">Lifetime Plan ($400)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
 
-### 测试环境说明
+        <!-- 测试步骤 -->
+        <div class="space-y-6">
+            <!-- 1. 创建支付会话 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4">1. 创建支付会话</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">用户邮箱</label>
+                            <input type="email" v-model="checkoutData.customerEmail" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="test@example.com">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">用户名</label>
+                            <input type="text" v-model="checkoutData.metadata.username" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Test User">
+                        </div>
+                    </div>
+                    <button @click="createCheckoutSession" 
+                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        :disabled="loading.create">
+                        {{ loading.create ? '创建中...' : '创建支付会话' }}
+                    </button>
+                    <div v-if="results.create" class="mt-4">
+                        <div class="bg-gray-50 rounded p-4">
+                            <pre class="text-sm overflow-auto">{{ JSON.stringify(results.create, null, 2) }}</pre>
+                        </div>
+                        <div v-if="results.create.url" class="mt-4">
+                            <a :href="results.create.url" target="_blank" 
+                                class="inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                                打开支付页面
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-1. 测试模式
-- 使用测试API密钥
-- 所有支付都是模拟的，不会产生实际扣款
-- Webhook事件会立即触发
-- 支持所有测试卡号
+            <!-- 2. 查询支付状态 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4">2. 查询支付状态</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">会话 ID</label>
+                        <input type="text" v-model="sessionId" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="cs_live_xxxxx">
+                    </div>
+                    <button @click="checkPaymentStatus" 
+                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        :disabled="loading.status">
+                        {{ loading.status ? '查询中...' : '查询支付状态' }}
+                    </button>
+                    <div v-if="results.status" class="mt-4">
+                        <div class="bg-gray-50 rounded p-4">
+                            <pre class="text-sm overflow-auto">{{ JSON.stringify(results.status, null, 2) }}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-2. 生产模式
-- 使用生产API密钥
-- 真实交易，会产生实际扣款
-- Webhook事件根据实际支付处理时间触发
-- 只支持真实信用卡
+            <!-- 3. 查询元数据 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4">3. 查询元数据</h3>
+                <div class="space-y-4">
+                    <button @click="checkMetadata" 
+                        class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        :disabled="loading.metadata">
+                        {{ loading.metadata ? '查询中...' : '查询元数据' }}
+                    </button>
+                    <div v-if="results.metadata" class="mt-4">
+                        <div class="bg-gray-50 rounded p-4">
+                            <pre class="text-sm overflow-auto">{{ JSON.stringify(results.metadata, null, 2) }}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-## 重要提示
+            <!-- 4. 取消支付 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4">4. 取消支付</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">取消原因</label>
+                        <select v-model="cancelData.reason" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="price_too_high">价格太高</option>
+                            <option value="changed_mind">改变主意</option>
+                            <option value="technical_issue">技术问题</option>
+                            <option value="other">其他原因</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">反馈信息</label>
+                        <textarea v-model="cancelData.feedback" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            rows="3"
+                            placeholder="请输入取消原因的详细说明"></textarea>
+                    </div>
+                    <button @click="cancelPayment" 
+                        class="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                        :disabled="loading.cancel">
+                        {{ loading.cancel ? '取消中...' : '取消支付' }}
+                    </button>
+                    <div v-if="results.cancel" class="mt-4">
+                        <div class="bg-gray-50 rounded p-4">
+                            <pre class="text-sm overflow-auto">{{ JSON.stringify(results.cancel, null, 2) }}</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-### 1. 安全建议
-- 永远不要在前端暴露API密钥
-- 所有敏感数据都应该通过后端处理
-- 实现请求频率限制
-- 使用HTTPS进行所有API通信
-- 验证所有用户输入
+    <script>
+        const { createApp, ref, reactive, watch } = Vue;
 
-### 2. 错误处理
-- 实现适当的错误处理和重试机制
-- 记录所有API错误以便调试
-- 向用户显示友好的错误消息
-- 处理网络超时和断开连接的情况
+        createApp({
+            setup() {
+                // 配置
+                const config = reactive({
+                    apiBase: 'http://localhost:3002/api',
+                    priceId: 'price_1QlYNRHVMy0i1BlJA1y0DxB2'
+                });
 
-### 3. 性能优化
-- 实现请求缓存
-- 避免不必要的API调用
-- 使用防抖动处理用户操作
-- 实现支付状态的智能轮询
+                // 会话ID
+                const sessionId = ref('');
 
-### 4. 用户体验
-- 显示清晰的加载状态
-- 提供明确的错误反馈
-- 实现平滑的页面转换
-- 支持支付过程的断点续传
+                // 加载状态
+                const loading = reactive({
+                    create: false,
+                    status: false,
+                    metadata: false,
+                    cancel: false
+                });
 
-### 5. 数据处理
-- 正确处理货币和金额
-- 注意时区差异
-- 保存必要的支付记录
-- 实现对账和审计功能
+                // 结果数据
+                const results = reactive({
+                    create: null,
+                    status: null,
+                    metadata: null,
+                    cancel: null
+                });
 
-### 6. 并发处理
-- 防止重复支付
-- 处理并发请求
-- 实现幂等性
-- 使用乐观锁防止竞态条件
+                // 创建会话数据
+                const checkoutData = reactive({
+                    successUrl: 'http://localhost:3002/test.html?session_id={CHECKOUT_SESSION_ID}',
+                    cancelUrl: 'http://localhost:3002/test.html',
+                    metadata: {
+                        userId: 'test_123',
+                        userEmail: 'test@example.com',
+                        username: 'Test User',
+                        locale: 'zh',
+                        planType: 'subscription',
+                        plan: 'starter',
+                        timestamp: new Date().toISOString(),
+                        priceId: config.priceId
+                    },
+                    customerEmail: 'test@example.com',
+                    mode: 'payment',
+                    locale: 'zh',
+                    paymentMethodTypes: ['card'],
+                    allowPromotionCodes: true
+                });
 
-### 7. 监控和日志
-- 记录关键操作日志
-- 监控支付成功率
-- 跟踪API性能
-- 设置适当的告警机制
+                // 监听 priceId 变化
+                watch(() => config.priceId, (newPriceId) => {
+                    checkoutData.metadata.priceId = newPriceId;
+                });
 
-## 常见问题
+                // 取消数据
+                const cancelData = reactive({
+                    reason: 'price_too_high',
+                    feedback: ''
+                });
 
-1. Q: 支付失败后如何处理？
-   A: 检查错误信息，根据错误类型决定是否重试或提示用户更换支付方式。
+                // API 请求函数
+                const makeRequest = async (method, url, data = null) => {
+                    try {
+                        const apiUrl = `${config.apiBase}${url}`;
+                        console.log('请求URL:', apiUrl);
+                        
+                        const requestConfig = {
+                            method,
+                            url: apiUrl,
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        };
 
-2. Q: 如何处理网络超时？
-   A: 实现请求重试机制，同时确保操作的幂等性。
+                        if (data) {
+                            requestConfig.data = data;
+                            console.log('请求数据:', data);
+                        }
 
-3. Q: 支付成功但未收到通知怎么办？
-   A: 实现webhook重试机制，同时提供手动查询接口。
+                        const response = await axios(requestConfig);
+                        console.log('响应数据:', response.data);
+                        return response.data;
+                    } catch (error) {
+                        console.error('API请求失败:', error);
+                        if (error.response) {
+                            console.error('错误响应:', error.response.data);
+                        }
+                        throw error;
+                    }
+                };
 
-4. Q: 如何处理重复支付？
-   A: 在创建支付会话时检查是否存在未完成的支付，实现幂等性检查。
+                // 1. 创建支付会话
+                const createCheckoutSession = async () => {
+                    loading.create = true;
+                    try {
+                        // 构建请求数据
+                        const data = {
+                            priceId: config.priceId,
+                            ...checkoutData,
+                            metadata: {
+                                ...checkoutData.metadata,
+                                priceId: config.priceId
+                            }
+                        };
+                        console.log('创建支付会话，数据:', data);
+                        
+                        const result = await makeRequest('POST', '/create-checkout-session', data);
+                        results.create = result;
+                        
+                        if (result.url) {
+                            const urlObj = new URL(result.url);
+                            const pathParts = urlObj.pathname.split('/');
+                            sessionId.value = pathParts[pathParts.length - 1].split('#')[0];
+                            console.log('提取的会话ID:', sessionId.value);
+                        }
+                    } catch (error) {
+                        console.error('创建支付会话失败:', error);
+                        const errorMessage = error.response?.data?.details || error.response?.data?.message || error.message;
+                        alert('创建支付会话失败: ' + errorMessage);
+                    } finally {
+                        loading.create = false;
+                    }
+                };
 
-5. Q: 如何确保支付安全？
-   A: 使用HTTPS，实现请求签名，验证webhook，限制API访问频率。
+                // 2. 查询支付状态
+                const checkPaymentStatus = async () => {
+                    if (!sessionId.value) {
+                        alert('请先创建支付会话或输入会话ID');
+                        return;
+                    }
+                    loading.status = true;
+                    try {
+                        results.status = await makeRequest('GET', `/check-payment-status/${sessionId.value}`);
+                    } catch (error) {
+                        console.error('查询支付状态失败:', error);
+                        alert('查询支付状态失败: ' + (error.response?.data?.message || error.message));
+                    } finally {
+                        loading.status = false;
+                    }
+                };
 
-## 更新日志
+                // 3. 查询元数据
+                const checkMetadata = async () => {
+                    if (!sessionId.value) {
+                        alert('请先创建支付会话或输入会话ID');
+                        return;
+                    }
+                    loading.metadata = true;
+                    try {
+                        results.metadata = await makeRequest('GET', `/payment/metadata/${sessionId.value}`);
+                    } catch (error) {
+                        console.error('查询元数据失败:', error);
+                        alert('查询元数据失败: ' + (error.response?.data?.message || error.message));
+                    } finally {
+                        loading.metadata = false;
+                    }
+                };
 
-### v1.1.0 (2024-02-20)
-- 添加新的支付状态：processing, expired
-- 完善错误处理机制
-- 添加并发请求处理
-- 补充webhook文档
+                // 4. 取消支付
+                const cancelPayment = async () => {
+                    if (!sessionId.value) {
+                        alert('请先创建支付会话或输入会话ID');
+                        return;
+                    }
+                    loading.cancel = true;
+                    try {
+                        const data = {
+                            sessionId: sessionId.value,
+                            ...cancelData,
+                            timestamp: new Date().toISOString()
+                        };
+                        results.cancel = await makeRequest('POST', '/payment/cancel', data);
+                    } catch (error) {
+                        console.error('取消支付失败:', error);
+                        alert('取消支付失败: ' + (error.response?.data?.message || error.message));
+                    } finally {
+                        loading.cancel = false;
+                    }
+                };
 
-### v1.0.0 (2024-02-01)
-- 初始版本发布
-- 基本支付功能
-- 支付状态查询 
+                // 检查 URL 参数
+                const checkUrlParams = () => {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const urlSessionId = urlParams.get('session_id');
+                    if (urlSessionId) {
+                        sessionId.value = urlSessionId;
+                        checkPaymentStatus();
+                    }
+                };
+
+                // 页面加载时检查 URL 参数
+                checkUrlParams();
+
+                return {
+                    config,
+                    sessionId,
+                    loading,
+                    results,
+                    checkoutData,
+                    cancelData,
+                    createCheckoutSession,
+                    checkPaymentStatus,
+                    checkMetadata,
+                    cancelPayment
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html> 

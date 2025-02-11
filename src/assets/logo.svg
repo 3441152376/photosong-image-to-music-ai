@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 渐变定义 -->
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90E2"/>
+      <stop offset="100%" style="stop-color:#9B51E0"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 主图形 -->
+  <g transform="translate(56, 56) scale(0.8)">
+    <!-- 照片图标 -->
+    <rect x="50" y="100" width="300" height="250" rx="20" fill="url(#logoGradient)"/>
+    <circle cx="150" cy="175" r="30" fill="white" opacity="0.9"/>
+    
+    <!-- 音符图标 -->
+    <path d="M350 150 L400 100 L400 300 Q400 350 350 350 Q300 350 300 300 Q300 250 350 250 Z" 
+          fill="url(#logoGradient)" 
+          stroke="white" 
+          stroke-width="8"/>
+  </g>
+</svg>

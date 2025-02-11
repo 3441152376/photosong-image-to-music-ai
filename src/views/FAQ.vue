@@ -1,6 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useHead } from '@vueuse/head'
+import { generateFAQSchema } from '../utils/structuredData'
 import TheNavbar from '../components/TheNavbar.vue'
 import TheFooter from '../components/TheFooter.vue'
 
@@ -86,6 +88,47 @@ const toggleQuestion = (questionId) => {
 const isQuestionActive = (questionId) => {
   return activeQuestions.value.has(questionId)
 }
+
+// FAQ 数据
+const faqs = computed(() => [
+  {
+    question: t('faq.questions.howItWorks'),
+    answer: t('faq.answers.howItWorks')
+  },
+  {
+    question: t('faq.questions.pricing'),
+    answer: t('faq.answers.pricing')
+  },
+  {
+    question: t('faq.questions.copyright'),
+    answer: t('faq.answers.copyright')
+  },
+  {
+    question: t('faq.questions.quality'),
+    answer: t('faq.answers.quality')
+  },
+  {
+    question: t('faq.questions.support'),
+    answer: t('faq.answers.support')
+  }
+])
+
+// 使用 useHead 添加结构化数据
+useHead({
+  title: `${t('faq.title')} - PhotoSong`,
+  meta: [
+    {
+      name: 'description',
+      content: t('faq.description')
+    }
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      children: computed(() => JSON.stringify(generateFAQSchema(faqs.value)))
+    }
+  ]
+})
 </script>
 
 <template>

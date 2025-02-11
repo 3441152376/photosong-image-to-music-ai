@@ -12,6 +12,9 @@ const POINTS_HISTORY_TYPE = {
 
 // 更新用户积分
 export const updateUserPoints = async (user, points, type, description) => {
+  // 开始事务
+  const transaction = await AV.Cloud.run('beginTransaction')
+  
   try {
     // 验证操作
     const validatedOperation = await pointsMiddleware(user, points, type)
@@ -39,24 +42,46 @@ export const updateUserPoints = async (user, points, type, description) => {
     history.set('signature', validatedOperation.signature)
     history.set('encryptedData', encryptedData)
     
-    // 使用 LeanCloud 原子操作更新用户积分
+    // 使用事务查询用户
     const userQuery = new AV.Query('_User')
-    const userToUpdate = await userQuery.get(user.id)
+    const userToUpdate = await userQuery.get(user.id, { transaction })
     
-    // 在事务中执行积分更新
-    return await AV.Object.saveAll([history, userToUpdate], {
+    if (!userToUpdate) {
+      throw new Error('User not found')
+    }
+    
+    // 计算新的积分余额
+    const currentPoints = userToUpdate.get('points') || 0
+    const newPoints = currentPoints + points
+    
+    if (newPoints < 0) {
+      throw new Error('Insufficient points')
+    }
+    
+    // 更新用户积分
+    userToUpdate.set('points', newPoints)
+    
+    // 在事务中保存所有更改
+    await AV.Object.saveAll([history, userToUpdate], {
       fetchWhenSave: true,
-      transaction: true
-    }).then(() => {
-      // 更新成功后返回新的积分余额
-      return {
-        success: true,
-        newBalance: userToUpdate.get('points'),
-        transactionId
-      }
+      transaction
     })
     
+    // 提交事务
+    await AV.Cloud.run('commitTransaction', { transaction })
+    
+    // 更新成功后返回新的积分余额
+    return {
+      success: true,
+      newBalance: newPoints,
+      transactionId
+    }
+    
   } catch (error) {
+    // 回滚事务
+    if (transaction) {
+      await AV.Cloud.run('rollbackTransaction', { transaction })
+    }
     console.error('Failed to update points:', error)
     throw error
   }

@@ -130,7 +130,7 @@
         </div>
       </div>
 
-      <!-- 积分购买 -->
+      <!-- 
       <div class="points-section">
         <h2 class="section-title">{{ t('pricing.points.title') }}</h2>
         <div class="points-rate">{{ t('pricing.points.rate') }}</div>
@@ -165,7 +165,7 @@
           </div>
         </div>
       </div>
-
+积分购买 -->
       <!-- 会员特权说明 -->
       <div class="benefits-section">
         <h2 class="section-title">{{ t('pricing.membership.benefits.title') }}</h2>

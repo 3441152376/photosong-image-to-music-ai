@@ -1,25 +1,233 @@
 export default {
+  meta: {
+    title: 'PhotoSong - AI Music Generator | Transform Photos into Music',
+    description: 'PhotoSong is a leading AI music generation platform. Upload photos to create unique musical pieces. Supporting various music styles including pop, classical, and jazz.',
+    keywords: 'AI music generation,photo to music,AI composition,intelligent music creation,AI composer,image music conversion,AI soundtrack,smart music,music generator,automatic composition,AI music tools,intelligent music app'
+  },
   nav: {
     home: 'Home',
     create: 'Create',
     community: 'Community',
-    profile: 'Profile',
+    articles: 'Articles',
     pricing: 'Pricing',
+    faq: 'FAQ',
+    contact: 'Contact',
+    tutorial: 'Tutorial',
+    feedback: 'Feedback',
+    terms: 'Terms of Service',
+    privacy: 'Privacy Policy',
+    copyright: 'Copyright',
+    profile: 'Profile',
     login: 'Login',
     register: 'Register',
-    logout: 'Logout'
+    logout: 'Logout',
+    back: 'Back',
+    works: 'Works'
   },
+  
   auth: {
+    title: {
+      login: '🔐 Welcome Back',
+      register: '✨ Join Photo Song',
+      welcome: '👋 Welcome Back',
+      join: '🎉 Join Photo Song'
+    },
+    loginPrompt: {
+      title: '🔒 Login Required',
+      description: 'Please login or create an account to access this feature',
+      button: '🔑 Login Now'
+    },
+    login: 'Login',
+    register: 'Register',
+    contactSupport: 'Contact Support',
+    error: {
+      registerFailed: 'Registration failed, please try again later',
+      deviceLimit: 'Device registration limit reached',
+      deviceLimitTitle: 'Device Registration Limit',
+      deviceLimitHelp: 'To ensure service quality, each device can register up to 3 accounts. Please contact support if you need assistance.',
+      deviceLimitOption1: 'Login with existing account',
+      deviceLimitOption2: 'Contact support for help',
+      usernameExists: 'Username is already taken',
+      emailExists: 'Email is already registered',
+      mobilePhoneExists: 'Phone number is already registered',
+      emailFormatInvalid: 'Invalid email format',
+      passwordTooShort: 'Password must be at least 6 characters',
+      accountNotExist: 'Account does not exist',
+      wrongPassword: 'Incorrect password',
+      emailNeedsVerification: 'Email verification required',
+      tooManyLoginAttempts: 'Too many login attempts, please try again later',
+      loginSystemError: 'Login system error, please try again later',
+      emailVerificationRequired: 'Email verification required to login'
+    },
+    form: {
+      email: {
+        label: '📧 Email',
+        placeholder: 'Enter your email'
+      },
+      username: {
+        label: '👤 Username',
+        placeholder: 'Enter username'
+      },
+      password: {
+        label: '🔑 Password',
+        placeholder: 'Enter password'
+      },
+      confirmPassword: {
+        label: '🔄 Confirm Password',
+        placeholder: 'Confirm your password'
+      },
+      avatar: {
+        upload: '📸 Click here to upload avatar',
+        change: '🔄 Click to change avatar',
+        tip: '⚠️ Please upload your avatar (Required) - This helps others recognize you better',
+        required: 'You have not uploaded an avatar yet, please upload one',
+        dialog: {
+          title: 'Avatar Required',
+          content: 'To enhance community experience, we need you to upload an avatar. This will help other users recognize you better.',
+          confirm: 'Upload Now',
+          cancel: 'Later'
+        }
+      }
+    },
+    buttons: {
+      login: '🔐 Login',
+      register: '✨ Register',
+      forgotPassword: '🤔 Forgot Password?',
+      hasAccount: '👋 Already have an account? Login',
+      noAccount: '✨ No account? Register',
+      verifyEmail: '📧 Resend Verification Email',
+      resendCode: '🔄 Resend Code'
+    },
+    validation: {
+      email: {
+        required: 'Email is required',
+        invalid: 'Please enter a valid email address',
+        unverified: 'Email is not verified, please verify first'
+      },
+      username: {
+        required: 'Username is required',
+        minLength: 'Username must be at least 2 characters'
+      },
+      password: {
+        required: 'Password is required',
+        minLength: 'Password must be at least 6 characters',
+        notMatch: 'Passwords do not match'
+      },
+      avatar: {
+        required: '⚠️ Please upload your avatar, it is required',
+        format: '⚠️ Only JPG or PNG format allowed',
+        size: '⚠️ Image size cannot exceed 10MB',
+        success: '✅ Avatar uploaded successfully'
+      }
+    },
+    errors: {
+      loginFailed: 'Login failed, please check your email and password',
+      userExists: 'This email is already registered',
+      verificationFailed: 'Verification failed, please try again later',
+      verificationRequired: 'Please verify your email first',
+      verificationSent: 'Verification email has been sent',
+      tooManyAttempts: 'Too many attempts, please try again later',
+      requestEmailVerification: 'Please verify your email first',
+      emailNotVerified: 'Please verify your email first',
+      invalidEmail: 'Invalid email address',
+      invalidPassword: 'Invalid password',
+      userNotFound: 'User not found',
+      emailAlreadyInUse: 'Email is already in use',
+      weakPassword: 'Password is too weak',
+      networkError: 'Network error, please try again later',
+      unknownError: 'An unknown error occurred, please try again later',
+      googleLogin: 'Failed to sign in with Google, please try again',
+      loginRequired: 'Please login first',
+      passwordReset: 'Password reset failed',
+      updateProfile: 'Profile update failed',
+      sessionExpired: 'Session expired, please login again',
+      emailFormatInvalid: 'Invalid email format',
+      passwordTooShort: 'Password must be at least 6 characters',
+      accountNotExist: 'Account does not exist',
+      wrongPassword: 'Incorrect password',
+      emailNeedsVerification: 'Email verification required',
+      tooManyLoginAttempts: 'Too many login attempts, please try again later',
+      loginSystemError: 'Login system error, please try again later',
+      emailVerificationRequired: 'Email verification is required to login'
+    },
+    newUserBenefits: {
+      title: 'New User Benefits',
+      points: 'Get 180 free points',
+      membership: 'Get 1-day free membership',
+      description: 'Register now to start your AI music creation journey'
+    },
     success: {
+      verificationSent: 'Verification email sent',
+      verified: 'Email verified successfully',
+      registered: 'Registration successful',
+      loggedIn: 'Login successful',
+      avatarUpload: 'Avatar uploaded successfully',
+      register: 'Registration successful! Please check your email for verification. New users get 180 points and 1-day free membership!',
       login: 'Login successful',
-      register: 'Registration successful',
-      logout: 'Logout successful'
+      googleLogin: 'Successfully signed in with Google'
+    },
+    emailVerification: {
+      required: 'Please verify your email first',
+      sent: 'Verification email has been sent',
+      resend: 'Resend verification email',
+      success: 'Email verified successfully',
+      failed: 'Email verification failed',
+      checkInbox: 'A verification email has been sent to your inbox. Please check and click the verification link',
+      alreadyVerified: 'Email already verified',
+      expired: 'Verification link expired, please resend',
+      instruction: 'We have sent a verification email to your inbox. Please follow the instructions to complete verification.',
+      note: 'If you have not received the verification email, please check your spam folder or click the button below to resend.',
+      waiting: 'Waiting for verification...',
+      verified: 'Email verified, please login'
+    },
+    loginWithGoogle: 'Sign in with Google',
+    or: 'or',
+    resetPassword: {
+      title: 'Reset Password',
+      subtitle: 'Enter your email address to reset your password',
+      form: {
+        email: {
+          label: 'Email Address',
+          placeholder: 'Enter your email address'
+        }
+      },
+      buttons: {
+        submit: 'Reset Password',
+        backToLogin: 'Back to Login'
+      },
+      success: 'Password reset email has been sent',
+      error: 'Failed to send password reset email'
+    },
+    tips: {
+      verificationEmailSent: 'Verification email has been sent to your inbox',
+      verificationEmailResent: 'Verification email has been resent to your inbox'
     }
   },
   home: {
+    meta: {
+      title: "PhotoSong - Turn Photos into Music with AI",
+      description: "Transform your photos into unique musical pieces with PhotoSong's AI technology."
+    },
     hero: {
-      title: 'AI-Powered Photo to Music Creation Platform',
+      title: 'Turn Your Photos into Music with AI',
+      subtitle: 'Transform any image into unique melodies using advanced AI technology',
+      cta: 'Start Creating for Free',
+      tryNow: 'Try Now - No Sign Up Required',
+      features: [
+        'Instant Music Generation',
+        'Professional Quality Output',
+        'No Technical Skills Required',
+        '100% Free to Use'
+      ],
+      startNow: 'Start Using Free Now',
+      commercialUse: 'Free for Commercial Use',
+      noSignup: 'No Registration Required',
       description: 'Using advanced AI technology to transform your photos into unique musical works. Let every photo sing its own song.',
+      newUser: {
+        title: 'New User Exclusive',
+        benefits: 'Get 180 points and 1-day membership when you register',
+        start: 'Start Creating Now'
+      },
       stats: {
         users: 'Active Users',
         works: 'Creations',
@@ -41,7 +249,7 @@ export default {
       rating: 'User Rating'
     },
     features: {
-      title: 'Features',
+      title: 'Key Features',
       aiPowered: {
         title: 'AI-Powered',
         desc: 'Advanced AI algorithms to create unique music'
@@ -53,7 +261,12 @@ export default {
       unique: {
         title: 'Unique Creation',
         desc: 'Every photo creates a unique musical piece'
-      }
+      },
+      list: [
+        'Transform Photos into Music',
+        'Personalized Music Creation',
+        'Multi-language Support'
+      ]
     },
     howItWorks: {
       title: 'Creation Process',
@@ -105,13 +318,236 @@ export default {
       description: 'Discover amazing musical creations from the community'
     },
     works: {
+      title: 'Featured Works',
+      description: 'Explore unique AI-generated musical creations',
+      playWork: 'Play work {title}',
+      viewMore: 'View More',
       status: {
         generating: 'Generating',
         failed: 'Generation Failed'
       },
       untitledWork: 'Untitled Work',
       anonymousUser: 'Anonymous User',
-      playWork: 'Play music for {title}'
+      meta: {
+        title: '{title} | {author}',
+        description: '{title} - A {style} music piece created by {author} using AI. On PhotoSong, images turn into melodies.',
+        schemaName: 'AI Generated Music',
+        schemaDescription: 'Music generated from photos using AI technology'
+      },
+      cta: {
+        title: 'Ready to Start Creating?',
+        description: 'Sign up now and experience AI-driven music creation for free. Give your photos a unique voice.',
+        button: 'Start Creating for Free'
+      },
+      techBadges: {
+        imageProcessing: 'Image Processing',
+        musicCreation: 'Lyrics & Music Creation',
+        realTimeSharing: 'Real-time Sharing'
+      },
+      steps: {
+        ariaLabel: 'Step {number}: {title}',
+        1: {
+          title: 'Upload Photo',
+          description: 'Choose the photo you want to transform'
+        },
+        2: {
+          title: 'AI Analysis',
+          description: 'Advanced AI analyzes content, scene and emotions'
+        },
+        3: {
+          title: 'Generate Music',
+          description: 'Create unique music based on analysis results'
+        },
+        4: {
+          title: 'Share Work',
+          description: 'Download or share your creation with the community'
+        }
+      },
+      newsAndCommunity: {
+        title: 'News & Community',
+        description: 'Stay updated with the latest in music technology and connect with our vibrant community',
+        musicTech: {
+          title: 'Music Tech News',
+          news1: {
+            title: 'AI Music Generation: The Future of Composition',
+            description: 'Exploring how artificial intelligence is revolutionizing music creation and composition'
+          },
+          news2: {
+            title: 'Visual Music: A New Era of Music Production',
+            description: 'How visual elements are becoming an integral part of modern music production'
+          },
+          news3: {
+            title: 'The Evolution of Music AI Tools',
+            description: 'A deep dive into the latest developments in AI-powered music tools'
+          }
+        },
+        community: {
+          title: 'Community Highlights',
+          post1: {
+            title: 'Creating Visual Music Experiences',
+            description: 'Community member Sarah Chen shares her journey in combining visuals with music'
+          },
+          post2: {
+            title: 'Innovative Music Visualization Techniques',
+            description: 'Michael Rodriguez demonstrates unique approaches to visualizing music'
+          },
+          post3: {
+            title: 'AI Artists: Breaking New Ground',
+            description: 'Emma Watson explores how AI is empowering a new generation of artists'
+          }
+        }
+      },
+      articles: {
+        title: 'Article Center',
+        description: 'Explore the latest AI music generation technology, industry news, and creation tips',
+        loading: 'Loading article...',
+        views: 'Views',
+        related: 'Related Articles',
+        prevArticle: 'Previous Article',
+        nextArticle: 'Next Article',
+        minuteRead: 'min read',
+        detail: {
+          title: 'Article | PhotoSong',
+          description: 'Read interesting articles about music, technology, and creativity on PhotoSong'
+        },
+        categories: {
+          research: 'Research Reports',
+          knowledge: 'Music Knowledge',
+          news: 'Industry News',
+          ai_music: 'AI Music',
+          tutorial: 'Tutorials',
+          professional: 'Professional Content',
+          industry: 'Industry Updates',
+          site_info: 'Site Information',
+          KNOWLEDGE: 'Music Knowledge',
+          NEWS: 'Industry News',
+          AI_MUSIC: 'AI Music',
+          PROFESSIONAL: 'Professional Content',
+          TUTORIAL: 'Tutorials',
+          INDUSTRY: 'Industry Updates',
+          RESEARCH: 'Research Reports',
+          all: 'All Categories',
+          music_knowledge: 'Music Knowledge'
+        },
+        viewMore: 'View More Articles',
+        untitledArticle: 'Untitled Article',
+        anonymousAuthor: 'Anonymous Author',
+        manager: 'Article Manager',
+        create: 'Create Article',
+        edit: 'Edit Article',
+        searchPlaceholder: 'Search articles...',
+        allCategories: 'All Categories',
+        relatedArticles: 'Related Articles',
+        empty: {
+          title: 'No Articles Found',
+          description: 'No articles available at the moment. Check back later for updates.'
+        },
+        status: {
+          DRAFT: 'Draft',
+          PUBLISHED: 'Published',
+          ARCHIVED: 'Archived'
+        },
+        lastUpdated: 'Last Updated',
+        publish: 'Publish',
+        archive: 'Archive',
+        saveSuccess: 'Saved successfully',
+        publishSuccess: 'Published successfully',
+        archiveSuccess: 'Archived successfully',
+        deleteSuccess: 'Deleted successfully',
+        confirmPublish: 'Are you sure you want to publish this article?',
+        confirmArchive: 'Are you sure you want to archive this article?',
+        confirmDelete: 'Are you sure you want to delete this article?',
+        errors: {
+          titleRequired: 'Title is required',
+          loadFailed: 'Failed to load',
+          saveFailed: 'Failed to save',
+          publishFailed: 'Failed to publish',
+          archiveFailed: 'Failed to archive',
+          deleteFailed: 'Failed to delete',
+          likeFailed: 'Failed to like article',
+          articleNotFound: 'Article not found or has been deleted',
+          statusChangeFailed: 'Failed to update status'
+        },
+        rewrite: {
+          title: 'AI Article Rewrite',
+          reference: {
+            label: 'Reference Content',
+            placeholder: 'Please enter reference content',
+            required: 'Please enter reference content',
+            similarity: {
+              high: 'Highly Similar',
+              medium: 'Moderately Similar',
+              low: 'Low Similarity'
+            }
+          },
+          options: {
+            similarity: {
+              label: 'Similarity'
+            },
+            style: {
+              label: 'Writing Style',
+              original: 'Original Style',
+              creative: 'Creative Style',
+              academic: 'Academic Style'
+            },
+            focus: {
+              label: 'Focus Areas',
+              structure: 'Article Structure',
+              tone: 'Tone and Style',
+              examples: 'Case Examples',
+              insights: 'Depth of Insights'
+            },
+            improvements: {
+              label: 'Areas for Improvement',
+              depth: 'Content Depth',
+              clarity: 'Expression Clarity',
+              evidence: 'Supporting Evidence',
+              uniqueness: 'Unique Perspectives'
+            }
+          },
+          button: 'Start Rewrite',
+          success: 'Article rewrite successful',
+          error: 'Article rewrite failed'
+        },
+        enhance: {
+          success: 'Article enhanced successfully',
+          button: 'Enhance Article',
+          error: {
+            noContent: 'Article content cannot be empty',
+            invalidArticle: 'Invalid article',
+            enhancement: 'Enhancement failed',
+            save: 'Failed to save enhanced article'
+          },
+          options: {
+            focusAreas: {
+              label: 'Focus Areas',
+              seo: 'SEO Optimization',
+              readability: 'Readability',
+              professionalism: 'Professionalism',
+              engagement: 'Engagement'
+            },
+            tone: {
+              label: 'Tone',
+              professional: 'Professional',
+              casual: 'Casual',
+              storytelling: 'Storytelling',
+              persuasive: 'Persuasive'
+            },
+            targetLength: {
+              label: 'Target Length',
+              maintain: 'Maintain Length',
+              expand: 'Expand Content',
+              shorten: 'Shorten Content'
+            },
+            keepStructure: {
+              label: 'Article Structure',
+              keep: 'Keep Current Structure',
+              optimize: 'Optimize Structure'
+            }
+          }
+        },
+        likeSuccess: 'Article liked successfully'
+      }
     },
     cta: {
       title: 'Ready to Start Creating?',
@@ -143,38 +579,247 @@ export default {
       }
     },
     newsAndCommunity: {
-      title: "News & Community",
-      description: "Stay updated with the latest in music technology and connect with our vibrant community",
+      title: 'News & Community',
+      description: 'Stay updated with the latest in music technology and connect with our vibrant community',
       musicTech: {
-        title: "Music Tech News",
+        title: 'Music Tech News',
         news1: {
-          title: "Universal Music Group Announces New AI Music Streaming Policy",
-          description: "UMG introduces new policy to regulate AI-generated music usage and copyright protection"
+          title: 'AI Music Generation: The Future of Composition',
+          description: 'Exploring how artificial intelligence is revolutionizing music creation and composition'
         },
         news2: {
-          title: "Grimes Launches AI Voice Clone Platform",
-          description: "Artist Grimes releases personal AI voice clone platform for creators to use in their work"
+          title: 'Visual Music: A New Era of Music Production',
+          description: 'How visual elements are becoming an integral part of modern music production'
         },
         news3: {
-          title: "YouTube Unveils Dream Track AI Music Tool",
-          description: "YouTube partners with major labels to launch AI music creation tool, opening new possibilities"
+          title: 'The Evolution of Music AI Tools',
+          description: 'A deep dive into the latest developments in AI-powered music tools'
         }
       },
       community: {
-        title: "Community Highlights",
+        title: 'Community Highlights',
         post1: {
-          title: "MusicGen: New Breakthrough in Open Source Music Generation",
-          description: "Hugging Face releases latest music generation model with enhanced AI composition capabilities"
+          title: 'Creating Visual Music Experiences',
+          description: 'Community member Sarah Chen shares her journey in combining visuals with music'
         },
         post2: {
-          title: "PyTorch 2.2 Released with Major Audio Processing Updates",
-          description: "Latest PyTorch version brings performance improvements for AI music creation"
+          title: 'Innovative Music Visualization Techniques',
+          description: 'Michael Rodriguez demonstrates unique approaches to visualizing music'
         },
         post3: {
-          title: "Stable Audio 1.0 Officially Released",
-          description: "Stability AI launches stable version of audio generation tool, pioneering new era in AI music production"
+          title: 'AI Artists: Breaking New Ground',
+          description: 'Emma Watson explores how AI is empowering a new generation of artists'
         }
       }
+    },
+    articles: {
+      title: 'Article Center',
+      description: 'Explore the latest AI music generation technology, industry news, and creation tips',
+      loading: 'Loading article...',
+      views: 'Views',
+      related: 'Related Articles',
+      prevArticle: 'Previous Article',
+      nextArticle: 'Next Article',
+      minuteRead: 'min read',
+      detail: {
+        title: 'Article | PhotoSong',
+        description: 'Read interesting articles about music, technology, and creativity on PhotoSong'
+      },
+      categories: {
+        all: 'All',
+        news: 'News',
+        knowledge: 'Knowledge',
+        ai_music: 'AI Music',
+        professional: 'Professional',
+        tutorial: 'Tutorials',
+        research: 'Research',
+        industry: 'Industry',
+        community: 'Community',
+        music_knowledge: 'Music Knowledge'
+      },
+      viewMore: 'View More Articles',
+      untitledArticle: 'Untitled Article',
+      anonymousAuthor: 'Anonymous Author',
+      manager: 'Article Manager',
+      create: 'Create Article',
+      edit: 'Edit Article',
+      searchPlaceholder: 'Search articles...',
+      allCategories: 'All Categories',
+      relatedArticles: 'Related Articles',
+      empty: {
+        title: 'No Articles Found',
+        description: 'No articles available at the moment. Check back later for updates.'
+      },
+      status: {
+        label: 'Status',
+        all: 'All',
+        draft: 'Draft',
+        published: 'Published',
+        archived: 'Archived'
+      },
+      lastUpdated: 'Last Updated',
+      publish: 'Publish',
+      archive: 'Archive',
+      saveSuccess: 'Saved successfully',
+      publishSuccess: 'Published successfully',
+      archiveSuccess: 'Archived successfully',
+      deleteSuccess: 'Deleted successfully',
+      confirmPublish: 'Are you sure you want to publish this article?',
+      confirmArchive: 'Are you sure you want to archive this article?',
+      confirmDelete: 'Are you sure you want to delete this article?',
+      errors: {
+        titleRequired: 'Title is required',
+        loadFailed: 'Failed to load',
+        saveFailed: 'Failed to save',
+        publishFailed: 'Failed to publish',
+        archiveFailed: 'Failed to archive',
+        deleteFailed: 'Failed to delete',
+        likeFailed: 'Failed to like article',
+        articleNotFound: 'Article not found or has been deleted',
+        statusChangeFailed: 'Failed to update status'
+      },
+      rewrite: {
+        title: 'Rewrite Article',
+        reference: {
+          label: 'Reference',
+          placeholder: 'Enter reference content',
+          similarity: {
+            label: 'Similarity',
+            high: 'High',
+            medium: 'Medium',
+            low: 'Low'
+          }
+        },
+        options: {
+          style: {
+            label: 'Writing Style',
+            original: 'Original',
+            creative: 'Creative',
+            professional: 'Professional',
+            casual: 'Casual'
+          },
+          focus: {
+            label: 'Focus Areas'
+          },
+          improvements: {
+            label: 'Areas to Improve'
+          }
+        },
+        button: 'Rewrite'
+      },
+      enhance: {
+        title: 'Enhance Article',
+        options: {
+          focusAreas: {
+            label: 'Focus Areas'
+          },
+          tone: {
+            label: 'Language Style'
+          },
+          targetLength: {
+            label: 'Target Length',
+            maintain: 'Maintain Current Length',
+            expand: 'Expand Content',
+            shorten: 'Shorten Content'
+          },
+          keepStructure: {
+            label: 'Keep Structure'
+          }
+        }
+      },
+      likeSuccess: 'Article liked successfully',
+      generateArticle: 'Generate Article',
+      strategy: 'Generation Strategy',
+      tone: 'Tone',
+      length: 'Article Length',
+      language: 'Article Language',
+      keywords: 'Keywords',
+      keywordCount: 'Keyword Count',
+      enterKeywords: 'Enter Keywords',
+      autoKeywords: 'Auto Generate Keywords',
+      batchGenerate: 'Batch Generate',
+      imageGeneration: 'Image Generation',
+      draftSaving: 'Draft Saving',
+      afterGeneration: 'After Generation',
+      seoOptions: 'SEO Options',
+      mediaGeneration: 'Media Generation',
+      enhance: {
+        title: 'Enhance Article',
+        options: {
+          focusAreas: {
+            label: 'Focus Areas'
+          },
+          tone: {
+            label: 'Language Style'
+          },
+          targetLength: {
+            label: 'Target Length',
+            maintain: 'Maintain Current Length',
+            expand: 'Expand Content',
+            shorten: 'Shorten Content'
+          },
+          keepStructure: {
+            label: 'Keep Structure'
+          }
+        }
+      },
+      rewrite: {
+        title: 'Rewrite Article',
+        reference: {
+          label: 'Reference',
+          placeholder: 'Enter reference content',
+          similarity: {
+            label: 'Similarity',
+            high: 'High',
+            medium: 'Medium',
+            low: 'Low'
+          }
+        },
+        options: {
+          style: {
+            label: 'Writing Style',
+            original: 'Original',
+            creative: 'Creative',
+            professional: 'Professional',
+            casual: 'Casual'
+          },
+          focus: {
+            label: 'Focus Areas'
+          },
+          improvements: {
+            label: 'Areas to Improve'
+          }
+        },
+        button: 'Rewrite'
+      },
+      cover: {
+        label: 'Cover Image',
+        tip: 'Recommended size: 1200x630px, max 2MB'
+      },
+      changeStatus: 'Change Status',
+      status: {
+        all: 'All',
+        draft: 'Draft',
+        published: 'Published',
+        archived: 'Archived'
+      },
+      management: {
+        title: 'Article Management',
+        create: 'Create Article',
+        edit: 'Edit Article',
+        delete: 'Delete Article',
+        confirmDelete: 'Are you sure you want to delete this article?',
+        search: 'Search Articles',
+        filter: 'Filter',
+        sort: 'Sort',
+        actions: 'Actions'
+      },
+      related: 'Related Articles',
+      readMore: 'Read More',
+      publishedAt: 'Published on',
+      readingTime: '{time} min read',
+      share: 'Share Article',
+      backToList: 'Back to Articles'
     }
   },
   common: {
@@ -186,6 +831,33 @@ export default {
       year: 'YYYY',
       month: 'MM',
       day: 'DD'
+    },
+    uploading: 'Uploading...',
+    loading: 'Loading...',
+    saving: 'Saving...',
+    success: 'Operation successful',
+    failed: 'Operation failed',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    edit: 'Edit',
+    save: 'Save',
+    search: 'Search',
+    total: 'Total',
+    actions: 'Actions',
+    previewMode: 'Preview Mode',
+    editMode: 'Edit Mode',
+    exitFullscreen: 'Exit Fullscreen',
+    fullscreen: 'Fullscreen',
+    image: 'Image',
+    link: 'Link',
+    defaultDescription: 'Transform photos into music with AI technology',
+    status: {
+      GENERATING: 'Generating',
+      COMPLETED: 'Completed',
+      FAILED: 'Generation Failed',
+      PENDING: 'Pending',
+      progress: 'Progress {progress}%'
     }
   },
   footer: {
@@ -216,88 +888,78 @@ export default {
       placeholder: 'Enter your email',
       subscribe: 'Subscribe'
     },
-    copyright: '© {year} Photo Song. All rights reserved.',
+    copyright: '  {year} Photo Song. All rights reserved.',
     description: 'AI-powered platform for transforming photos into unique musical pieces',
     friendlyLinks: {
       title: "Friendly Links"
-    }
+    },
+    description: 'Transform your photos into unique musical experiences with AI technology',
+    quickLinks: 'Quick Links',
+    support: 'Support',
+    legal: 'Legal',
+    newsletter: 'Newsletter',
+    newsletterDesc: 'Subscribe to get updates about new features and special offers',
+    emailPlaceholder: 'Enter your email',
+    emailRequired: 'Please enter your email',
+    subscribe: 'Subscribe',
+    subscribeSuccess: 'Successfully subscribed!',
+    copyright: ' {year} PhotoSong. All rights reserved.',
+    users: '{count} Users',
+    works: '{count} Works',
+    articles: '{count} Articles'
   },
   logout: {
     success: 'Logged out successfully',
     error: 'Failed to log out'
   },
   errors: {
-    fetchWorks: 'Failed to fetch latest works',
-    audioInit: 'Failed to initialize audio playback'
+    fetchWorks: 'Failed to load recent works',
+    audioInit: 'Failed to initialize audio',
+    fetchArticles: 'Failed to load articles',
+    notFound: {
+      title: 'Page Not Found',
+      description: 'Sorry, the page you are looking for does not exist or has been removed.',
+      backHome: 'Back to Home',
+      backPrev: 'Go Back',
+      quickLinks: 'Quick Links',
+      recommendations: 'Recommended Content',
+      search: 'Search',
+      searchPlaceholder: 'Search for what you need...'
+    },
+    loadFailed: 'Failed to load, please try again later',
+    articleNotFound: 'Article not found or has been deleted'
   },
   create: {
-    title: 'AI Music Creation',
-    subtitle: 'Upload a photo and let AI create your unique music',
-    description: 'Transform your photos into unique musical pieces with AI technology. Upload an image and our advanced AI will analyze its content, emotions, and style to create a personalized musical composition.',
+    title: 'Create Music',
+    steps: {
+      upload: 'Upload Photo',
+      style: 'Choose Style',
+      lyrics: 'Generate Lyrics',
+      music: 'Create Music'
+    },
+    upload: {
+      title: 'Upload Photo',
+      description: 'Upload a photo to create music'
+    },
+    subtitle: 'Upload a photo and let AI create unique music for you',
+    description: 'Using AI technology to transform your photos into unique musical works. After uploading the image, our advanced AI will analyze its content, emotions, and style to create personalized music for you.',
     points: {
       label: 'Points',
-      buy: 'Buy Points'
+      buy: 'Buy Points',
+      insufficient: 'Creating music requires 100 points, current points insufficient'
     },
     notice: {
       title: 'Creation Tips',
       tips: [
-        'Do not refresh or close the page during creation',
-        'You will automatically proceed to the next step after uploading',
-        'Prohibited content: pornography, violence, or illegal content'
+        'Creating one work requires 100 points',
+        'Do not refresh or close the page',
+        'You will proceed to the next step automatically after upload',
+        'Prohibited content: nudity, pornography, violence, gore, or other inappropriate content'
       ]
-    },
-    steps: {
-      upload: 'Upload Photo',
-      style: 'Choose Style & Title',
-      lyrics: 'Generate/Edit Lyrics',
-      music: 'Generate Music'
-    },
-    upload: {
-      title: 'Click or Drag to Upload',
-      description: 'Please upload jpg or png format, max size 5MB (points will be deducted automatically after upload)',
-      reupload: 'Re-upload',
-      progress: 'Upload Progress',
-      placeholder: 'Name your creation (max 10 characters)',
-      maxSize: 'Image size cannot exceed 5MB',
-      invalidFormat: 'Please upload jpg or png format image',
-      uploadFailed: 'Image upload failed, please try again'
     },
     style: {
       title: 'Music Style',
-      descriptions: {
-        pop: 'Modern pop music style with catchy melodies and rhythms',
-        rock: 'Energetic rock style with powerful guitars and drums',
-        electronic: 'Modern electronic music with synthesizers and electronic beats',
-        jazz: 'Elegant jazz style with improvisation and sophisticated harmonies',
-        classical: 'Elegant classical style with graceful orchestral arrangements',
-        folk: 'Warm folk style with sincere lyrics and acoustic instruments',
-        rnb: 'Soulful rhythm and blues with sensual vocals and groove',
-        hiphop: 'Rhythmic hip-hop style with expressive rap',
-        ambient: 'Ethereal ambient music creating an immersive experience',
-        edm: 'Energetic electronic dance music with powerful rhythms and drops',
-        metal: 'Heavy metal music with distorted guitars and double bass',
-        indie: 'Independent music style with unique creative expression',
-        soul: 'Infectious soul music with emotional performance',
-        blues: 'Traditional blues music with deep emotional expression',
-        funk: 'Rhythmic funk music emphasizing bass and groove'
-      },
-      tags: {
-        pop: ['modern', 'melodic', 'catchy'],
-        rock: ['electric guitar', 'drums', 'energetic'],
-        electronic: ['synth', 'edm', 'dance'],
-        jazz: ['smooth', 'improvisation', 'sophisticated'],
-        classical: ['orchestral', 'elegant', 'instrumental'],
-        folk: ['acoustic', 'storytelling', 'warm'],
-        rnb: ['soul', 'groove', 'emotional'],
-        hiphop: ['rap', 'beats', 'rhythmic'],
-        ambient: ['atmospheric', 'peaceful', 'ethereal'],
-        edm: ['dance', 'energetic', 'party'],
-        metal: ['heavy', 'distortion', 'intense'],
-        indie: ['alternative', 'unique', 'creative'],
-        soul: ['emotional', 'powerful', 'expressive'],
-        blues: ['emotional', 'traditional', 'soulful'],
-        funk: ['groovy', 'rhythmic', 'bass']
-      },
+      description: 'Choose your desired music style',
       pop: 'Pop',
       rock: 'Rock',
       electronic: 'Electronic',
@@ -312,7 +974,52 @@ export default {
       indie: 'Indie',
       soul: 'Soul',
       blues: 'Blues',
-      funk: 'Funk'
+      funk: 'Funk',
+      chinese: 'Chinese Style',
+      chineseClassical: 'Chinese Classical',
+      country: 'Country',
+      postRock: 'Post-Rock',
+      acidJazz: 'Acid Jazz',
+      reggae: 'Reggae',
+      latin: 'Latin',
+      world: 'World',
+      newage: 'New Age',
+      orchestral: 'Orchestral',
+      experimental: 'Experimental',
+      acoustic: 'Acoustic',
+      soundtrack: 'Soundtrack',
+      lofi: 'Lo-fi',
+      descriptions: {
+        pop: 'Modern pop music with catchy melodies and rhythms',
+        rock: 'Energetic rock style with powerful guitars and drums',
+        electronic: 'Modern electronic music with synthesizers and beats',
+        jazz: 'Elegant jazz style with improvisation and complex harmonies',
+        classical: 'Beautiful classical music with elegant orchestration',
+        folk: 'Warm folk style with sincere lyrics and acoustic instruments',
+        rnb: 'Soulful rhythm and blues with emotional vocals',
+        hiphop: 'Rhythmic hip-hop style with expressive rap',
+        ambient: 'Atmospheric ambient music creating immersive experiences',
+        edm: 'Energetic electronic dance music with strong rhythms',
+        metal: 'Heavy metal with distorted guitars and intense energy',
+        indie: 'Independent music with unique creative expression',
+        soul: 'Soulful music with powerful emotional expression',
+        blues: 'Traditional blues with deep emotional resonance',
+        funk: 'Rhythmic funk music with emphasis on bass and groove',
+        chinese: 'Modern music with Chinese elements and traditional instruments',
+        chineseClassical: 'Traditional Chinese classical music with elegant arrangements',
+        country: 'American country music with authentic storytelling',
+        postRock: 'Progressive post-rock with layered soundscapes',
+        acidJazz: 'Modern jazz fusion with electronic elements',
+        reggae: 'Upbeat island rhythms with offbeat guitar and bass, creating a laid-back Caribbean vibe',
+        latin: 'Passionate rhythms and melodies influenced by Latin American music traditions',
+        world: 'Diverse musical elements from various cultural traditions worldwide',
+        newage: 'Peaceful, atmospheric sounds with emphasis on harmony and tranquility',
+        orchestral: 'Full orchestral arrangements with rich, classical instrumentation',
+        experimental: 'Innovative and unconventional musical approaches pushing boundaries',
+        acoustic: 'Natural, unplugged sound focusing on acoustic instruments',
+        soundtrack: 'Cinematic compositions evoking emotional scenes and stories',
+        lofi: 'Low-fidelity production with warm, nostalgic atmosphere'
+      }
     },
     language: {
       title: 'Lyrics Language',
@@ -330,7 +1037,12 @@ export default {
         german: 'German',
         italian: 'Italian',
         russian: 'Russian',
-        instrumental: 'Instrumental'
+        portuguese: 'Portuguese',
+        arabic: 'Arabic',
+        hindi: 'Hindi',
+        thai: 'Thai',
+        vietnamese: 'Vietnamese',
+        turkish: 'Turkish'
       }
     },
     length: {
@@ -406,7 +1118,8 @@ export default {
       preparing: 'Preparing...',
       processing: 'Processing...',
       finalizing: 'Finalizing...',
-      tip: 'Please do not close the page during generation'
+      tip: 'Please do not close the page during generation',
+      lyrics: 'Generating lyrics, this may take a moment...'
     },
     preview: {
       title: 'Preview',
@@ -423,7 +1136,12 @@ export default {
       imageAnalysis: 'Image analysis failed',
       lyricsGeneration: 'Lyrics generation failed',
       musicGeneration: 'Music generation failed',
-      taskCheck: 'Failed to check task status'
+      taskCheck: 'Failed to check task status',
+      styleRequired: 'Please select a music style',
+      titleRequired: 'Please enter a title for your work',
+      languageRequired: 'Please select at least one language',
+      lengthRequired: 'Please select song length',
+      relevanceRequired: 'Please select lyrics relevance level'
     },
     success: {
       upload: 'Image uploaded successfully',
@@ -434,18 +1152,33 @@ export default {
       save: 'Save successful',
       update: 'Update successful',
       delete: 'Delete successful',
-      copy: 'Copy successful'
+      copy: 'Copy successful',
+      submitted: 'Creation request submitted, redirecting to profile page to check progress...'
     }
   },
   community: {
-    title: 'Community',
-    about: 'An AI-powered music generation community where users share and discover unique musical pieces created by AI. Here, every photo transforms into a melody, and every creation finds resonance.',
-    description: 'Discover amazing music works from the community',
+    meta: {
+      title: "Community | PhotoSong",
+      description: "Explore creative works from the PhotoSong community. Share your musical creations, get inspired by others' works, and join our growing community of AI music creators."
+    },
+    title: "Community",
+    description: "Discover amazing musical creations from our community",
+    filter: {
+      all: "All Works",
+      latest: "Latest",
+      popular: "Popular",
+      trending: "Trending"
+    },
+    empty: {
+      title: "No works yet",
+      description: "Be the first to share your creation"
+    },
+    error: {
+      loadFailed: "Failed to load works"
+    },
     works: {
-      untitledWork: 'Untitled Work',
-      anonymousUser: 'Anonymous User',
-      loadingError: 'Failed to load works list',
-      playCount: ''
+      playCount: "{count} plays",
+      anonymousUser: 'Anonymous User'
     }
   },
   pricing: {
@@ -562,6 +1295,15 @@ export default {
           name: 'Premium Package',
           description: 'Unlimited possibilities'
         }
+      },
+      insufficient: 'Creating music requires {points} points, current points insufficient',
+      success: {
+        deducted: '{points} points deducted',
+        refunded: '{points} points refunded'
+      },
+      error: {
+        deduct: 'Failed to deduct points',
+        refund: 'Failed to refund points'
       }
     },
     errors: {
@@ -573,341 +1315,240 @@ export default {
     },
     payment: {
       error: {
-        checkout: 'Failed to create checkout session, please try again',
-        noSession: 'Invalid payment session',
+        processing: 'Payment processing failed',
+        invalidProduct: 'Invalid product',
+        invalidAmount: 'Invalid payment amount',
+        serverError: 'Server error occurred'
       },
       status: {
-        checking: 'Checking Payment Status',
-        wait: 'Please wait while we process your order...',
-        error: 'Failed to confirm payment status',
-        processing: 'Payment Processing',
-        processingMessage: 'Your payment is being processed, please wait...',
-        failed: 'Payment Failed',
-        failedMessage: 'Sorry, the payment could not be completed. Please try again',
-        retry: 'Retry Payment',
-        tryAgain: 'Try Again'
+        successTitle: 'Payment Successful',
+        successDescription: 'Your payment has been processed successfully',
+        viewProfile: 'View Profile',
+        backToHome: 'Back to Home',
+        processing: 'Processing payment...',
+        failed: 'Payment failed',
+        pending: 'Payment pending'
       },
-      success: {
-        title: 'Payment Successful',
-        message: 'Thank you for your purchase! Your order has been confirmed',
-        continue: 'Continue'
+      points: {
+        success: 'Points added successfully',
+        failed: 'Failed to add points'
+      },
+      cancel: {
+        title: 'Payment Cancelled',
+        message: 'Your payment has been cancelled. We\'d love to know why you decided not to proceed.',
+        reasonLabel: 'What made you change your mind?',
+        selectReason: 'Please select a reason',
+        reasons: {
+          price: 'The price is too high',
+          features: 'Missing features I need',
+          technical: 'Technical issues during payment',
+          temporary: 'Just temporary, will try again later',
+          other: 'Other reasons'
+        },
+        retry: 'Try Again',
+        backToHome: 'Back to Home',
+        supportMessage: 'If you need any assistance, please don\'t hesitate to contact our support team.'
       }
     }
   },
   profile: {
     title: 'Profile',
+    meta: {
+      title: '{username}\'s Profile | PhotoSong',
+      description: 'Explore {username}\'s musical creations on PhotoSong. Discover their unique musical style and creative journey.'
+    },
+    about: {
+      bio: 'Bio',
+      noBio: 'This user hasn\'t written any introduction yet'
+    },
     works: {
       title: 'My Works',
       untitledWork: 'Untitled Work',
       filter: {
-        all: 'All Works',
-        generating: 'Generating',
-        completed: 'Completed',
-        failed: 'Generation Failed'
+        all: 'All Works'
       },
-      status: {
-        completed: 'Completed',
-        generating: 'Generating',
-        failed: 'Failed',
-        pending: 'Pending'
+      empty: {
+        description: 'No works yet',
+        filtered: 'No works match the selected criteria',
+        create: 'Create your first work'
       },
+      refresh: 'Refresh Status',
+      total: 'All Works',
+      completed: 'Completed',
+      noWorkToRefresh: 'No works to refresh',
+      refreshSuccess: 'Work status refreshed successfully',
+      refreshError: 'Failed to refresh status',
+      deleteOnlyFailed: 'Can only delete failed works',
       error: {
         loadFailed: 'Failed to load works list',
         checkStatusFailed: 'Failed to check task status',
         tooManyRetries: 'Too many status check retries'
       },
-      total: 'Total Works',
-      completed: 'Completed Works',
-      refresh: 'Refresh',
-      empty: {
-        title: 'No works yet',
-        description: 'You haven\'t created any works yet.',
-        create: 'Create your first work'
+      status: {
+        GENERATING: 'Generating',
+        COMPLETED: 'Completed',
+        FAILED: 'Generation Failed',
+        PENDING: 'Pending'
       }
     },
     user: {
       works: 'Works',
       points: 'Points',
-      membership: {
-        daysLeft: '{days} days left',
-        expired: 'Expired'
+      error: {
+        notLoggedIn: 'Please login first',
+        invalidUsername: 'Username must be 2-20 characters and can only contain letters, numbers, and underscores',
+        invalidBio: 'Bio cannot contain special characters and must be less than 200 characters',
+        updateFailed: 'Update failed'
+      },
+      update: {
+        success: 'Profile updated successfully',
+        failed: 'Failed to update profile'
+      },
+      username: {
+        placeholder: 'Enter username (2-20 characters)',
+        hint: 'Username can only contain letters, numbers, and underscores'
+      },
+      gender: {
+        label: 'Gender',
+        placeholder: 'Select gender',
+        notSpecified: 'Not Specified',
+        male: 'Male',
+        female: 'Female',
+        other: 'Other',
+        nonBinary: 'Non-Binary',
+        alien: 'Alien',
+        toaster: 'Toaster',
+        dinosaur: 'Dinosaur',
+        robot: 'Robot',
+        ghost: 'Ghost',
+        unicorn: 'Unicorn',
+        livingMeme: 'Living Meme',
+        catPerson: 'Cat Person',
+        dogPerson: 'Dog Person',
+        attackHelicopter: 'Attack Helicopter',
+        stillLoading: 'Still Loading...',
+        quantumSuperposition: 'Quantum Superposition',
+        coffeeMachine: 'Coffee Machine',
+        walmartBag: 'Walmart Bag'
+      },
+      bio: {
+        label: 'Bio',
+        placeholder: 'Write something about yourself...',
+        maxLength: 'Maximum 200 characters'
       },
       avatar: {
         upload: 'Upload Avatar',
         error: {
-          format: 'Please upload JPG or PNG format',
-          size: 'Image size cannot exceed 2MB',
-          uploadFailed: 'Avatar upload failed'
-        }
+          format: 'Please upload JPG or PNG format image',
+          size: 'Image size cannot exceed 10MB',
+          uploadFailed: 'Failed to upload avatar'
+        },
+        success: 'Avatar uploaded successfully'
       },
       logout: {
         button: 'Logout',
         success: 'Logged out successfully',
-        failed: 'Logout failed'
+        failed: 'Failed to logout'
       },
       creator: 'Creator'
+    },
+    userProfile: {
+      meta: {
+        title: "{username}'s Profile | PhotoSong",
+        description: "Explore {username}'s music creations on PhotoSong. Discover their unique musical style and creative journey."
+      },
+      about: {
+        bio: 'About',
+        noBio: 'This user has not added a bio yet',
+        location: 'Location',
+        website: 'Website',
+        joinedAt: 'Joined: {date}',
+        saveBio: 'Save Bio'
+      }
+    },
+    tabs: {
+      works: 'Works',
+      about: 'About'
+    },
+    sort: {
+      latest: 'Latest',
+      oldest: 'Oldest'
     }
+  },
+  work: {
+    meta: {
+      title: '{title} | {author}\'s AI Music - PhotoSong',
+      description: '{title} - A {style} music piece created by {author} using AI. At PhotoSong, images transform into melodies.'
+    },
+    author: 'Author',
+    style: 'Style',
+    createdAt: 'Created At',
+    defaultTitle: 'Untitled Work',
+    defaultAuthor: 'Anonymous',
+    defaultStyle: 'Default'
   },
   workDetail: {
-    error: {
-      notFound: 'Work not found',
-      loadFailed: 'Failed to load work details',
-      playFailed: 'Playback failed',
-      downloadFailed: 'Download failed',
-      audioNotFound: 'Audio file not found'
+    meta: {
+      title: '{title} | {author} - AI Generated Music - PhotoSong',
+      description: '{title} - A {style} music piece created by {author} using AI. At PhotoSong, photos transform into melodies.',
+      schemaName: '{title} - AI Generated Music',
+      schemaDescription: 'This is a music piece created by {author} using PhotoSong AI music generator.',
+      defaultTitle: 'AI Generated Music',
+      defaultDescription: 'Explore AI-generated music on PhotoSong - Where photos become melodies.'
     },
-    audio: {
-      play: 'Play',
-      pause: 'Pause',
-      clickToPlay: 'Click to play',
-      tryAgain: 'Please try again',
-      volume: 'Volume',
-      mute: 'Mute',
-      unmute: 'Unmute'
-    },
-    actions: {
-      download: {
-        button: 'Download',
-        success: 'Download successful',
-        failed: 'Download failed'
-      },
-      share: {
-        button: 'Share',
-        title: 'Share Work',
-        success: 'Link copied to clipboard',
-        failed: 'Failed to copy link'
-      }
+    defaultTitle: 'AI Generated Music',
+    defaultDescription: 'Discover AI-generated music on PhotoSong - where images transform into beautiful melodies.',
+    style: {
+      title: "Music Style"
     },
     lyrics: {
-      title: 'Lyrics',
-      show: 'Show Lyrics',
-      hide: 'Hide Lyrics',
-      scroll: 'Scroll Lyrics'
+      title: "Lyrics",
+      show: "Show Lyrics",
+      hide: "Hide Lyrics"
     },
-    status: {
-      generating: 'Generating...',
-      completed: 'Completed',
-      failed: 'Generation Failed',
-      progress: '{progress}% Completed'
+    recommendations: {
+      title: "More from Community",
+      description: "Explore more amazing works from our community",
+      autoplayDescription: "Next recommended work will play automatically after this one",
+      empty: "No recommendations",
+      nextUp: "Up Next"
     },
-    user: {
-      creator: 'Creator'
+    autoplay: {
+      enabled: "Autoplay On",
+      disabled: "Autoplay Off",
+      enable: "Enable Autoplay",
+      disable: "Disable Autoplay"
     },
-    stats: {
-      plays: ''
-    },
-    style: {
-      title: 'Music Style'
-    },
-    description: {
-      title: 'Work Description'
-    },
-    share: {
-      title: 'Share',
-      description: 'Share your work',
-      copy: 'Copy Link',
-      download: 'Download',
-      success: 'Link copied'
-    },
-    download: {
-      title: 'Download',
-      audio: 'Download Audio',
-      video: 'Download Video'
-    },
-    comments: {
-      title: 'Comments',
-      placeholder: 'Write a comment...',
-      submit: 'Submit',
-      empty: 'No comments yet'
-    },
-    defaultDescription: 'This is an AI-generated music piece',
+    creatorBadge: "Creator",
     anonymousUser: 'Anonymous User'
-  },
-  auth: {
-    title: {
-      login: 'Login',
-      register: 'Register',
-      welcome: 'Welcome Back',
-      join: 'Join Photo Song'
-    },
-    form: {
-      email: {
-        label: 'Email',
-        placeholder: 'Enter your email'
-      },
-      username: {
-        label: 'Username',
-        placeholder: 'Enter your username'
-      },
-      password: {
-        label: 'Password',
-        placeholder: 'Enter your password'
-      },
-      confirmPassword: {
-        label: 'Confirm Password',
-        placeholder: 'Confirm your password'
-      },
-      avatar: {
-        upload: 'Upload Avatar',
-        change: 'Change Avatar'
-      }
-    },
-    buttons: {
-      login: 'Login',
-      register: 'Register',
-      forgotPassword: 'Forgot Password?',
-      hasAccount: 'Already have an account? Login',
-      noAccount: 'No account? Register',
-      verifyEmail: 'Resend Verification Email',
-      resendCode: 'Resend Code'
-    },
-    validation: {
-      email: {
-        required: 'Email is required',
-        invalid: 'Please enter a valid email address',
-        unverified: 'Email is not verified, please verify first'
-      },
-      username: {
-        required: 'Username is required',
-        minLength: 'Username must be at least 2 characters'
-      },
-      password: {
-        required: 'Password is required',
-        minLength: 'Password must be at least 6 characters',
-        notMatch: 'Passwords do not match'
-      }
-    },
-    errors: {
-      loginFailed: 'Login failed, please check your email and password',
-      registerFailed: 'Registration failed, please try again later',
-      userExists: 'This email is already registered',
-      verificationFailed: 'Verification failed, please try again later',
-      verificationRequired: 'Please verify your email first',
-      verificationSent: 'Verification email has been sent',
-      tooManyAttempts: 'Too many attempts, please try again later',
-      requestEmailVerification: 'Please verify your email first',
-      emailNotVerified: 'Please verify your email first',
-      verificationRequired: 'Email verification required',
-      verificationSent: 'Verification email has been sent',
-      tooManyAttempts: 'Too many attempts, please try again later',
-      invalidEmail: 'Invalid email address',
-      invalidPassword: 'Invalid password',
-      userNotFound: 'User not found',
-      emailAlreadyInUse: 'Email is already in use',
-      weakPassword: 'Password is too weak',
-      networkError: 'Network error, please try again later',
-      unknownError: 'An unknown error occurred, please try again later'
-    },
-    success: {
-      verificationSent: 'Verification email sent',
-      verified: 'Email verified successfully',
-      registered: 'Registration successful',
-      loggedIn: 'Login successful',
-      avatarUpload: 'Avatar uploaded successfully',
-      upload: 'Upload successful',
-      save: 'Save successful',
-      delete: 'Delete successful',
-      share: 'Share successful',
-      copy: 'Copy successful',
-      register: 'Registration successful! Please check your email for verification',
-      logout: 'Logged out successfully',
-      resetPassword: 'Password reset email has been sent',
-      updatePassword: 'Password updated successfully',
-      updateProfile: 'Profile updated successfully',
-      verifyEmail: 'Email verified successfully',
-      login: 'Login successful'
-    },
-    resetPassword: {
-      title: 'Reset Password',
-      subtitle: 'Enter your email to reset password',
-      success: {
-        title: 'Reset Email Sent',
-        message: 'Password reset instructions have been sent to your email. Please follow the instructions to complete the password reset.',
-        tip: 'If you haven\'t received the email, please check your spam folder.'
-      },
-      form: {
-        email: {
-          label: 'Email',
-          placeholder: 'Enter your email address'
-        }
-      },
-      buttons: {
-        submit: 'Send Reset Email',
-        backToLogin: 'Back to Login'
-      },
-      errors: {
-        emailRequired: 'Email address is required',
-        emailInvalid: 'Please enter a valid email address',
-        resetFailed: 'Password reset failed, please try again later',
-        userNotFound: 'Email is not registered'
-      }
-    },
-    emailVerification: {
-      required: 'Please verify your email first',
-      sent: 'Verification email has been sent',
-      resend: 'Resend verification email',
-      success: 'Email verified successfully',
-      failed: 'Email verification failed',
-      checkInbox: 'A verification email has been sent to your inbox. Please check and click the verification link',
-      alreadyVerified: 'Email already verified',
-      expired: 'Verification link expired, please resend',
-      instruction: 'We have sent a verification email to your inbox. Please follow the instructions to complete verification.',
-      note: 'If you have not received the verification email, please check your spam folder or click the button below to resend.',
-      waiting: 'Waiting for verification...',
-      verified: 'Email verified, please login'
-    },
-    register: {
-      title: 'Register',
-      success: 'Registration successful! Please check your email for verification',
-      failed: 'Registration failed',
-      emailExists: 'This email is already registered',
-      usernameExists: 'This username is already taken',
-      usernamePlaceholder: 'Enter username (2-20 characters)',
-      emailPlaceholder: 'Enter your email',
-      passwordPlaceholder: 'Enter password (min 6 characters)',
-      hasAccount: 'Already have an account?',
-      login: 'Login now',
-      agreement: 'By registering, you agree to our',
-      terms: 'Terms of Service',
-      and: 'and',
-      privacy: 'Privacy Policy'
-    },
-    login: {
-      title: 'Login',
-      success: 'Login successful',
-      failed: 'Login failed',
-      emailNotVerified: 'Please verify your email before logging in',
-      invalidCredentials: 'Invalid email or password',
-      accountDisabled: 'Account has been disabled',
-      tooManyAttempts: 'Too many login attempts, please try again later',
-      emailPlaceholder: 'Enter your email',
-      passwordPlaceholder: 'Enter your password',
-      forgotPassword: 'Forgot password?',
-      noAccount: "Don't have an account?",
-      register: 'Register now'
-    }
   },
   points: {
     current: 'Current Points',
     deducted: '{points} points deducted',
     refunded: '{points} points refunded',
-    insufficient: 'Insufficient points',
+    insufficient: 'Creating music requires {points} points, current points insufficient',
     buy: 'Buy Points',
     label: 'Points',
     perUSD: '1 USD = {points} points',
     description: 'Creating a song requires 100 points',
     success: {
       deducted: '{points} points deducted',
-      refunded: '{points} points refunded',
-      purchased: '{points} points purchased'
-    }
+      refunded: '{points} points refunded'
+    },
+    error: {
+      deduct: 'Failed to deduct points',
+      refund: 'Failed to refund points'
+    },
+    purchased: 'Points Purchased',
+    unit: 'points'
   },
   notice: {
     title: 'Creation Tips',
     tips: [
+      'Creating one work requires 100 points',
       'Do not refresh or close the page',
-      'Automatically proceed to next step after upload',
-      'Prohibited content not allowed'
+      'You will proceed to the next step automatically after upload',
+      'Prohibited content: nudity, pornography, violence, gore, or other inappropriate content'
     ]
   },
   messages: {
@@ -1330,6 +1971,264 @@ export default {
     copy: 'Copy successful',
     download: 'Download successful',
     generate: 'Generation successful',
-    publish: 'Publish successful'
+    publish: 'Publish successful',
+    membership: {
+      plan: 'Membership Plan',
+      plans: {
+        trial: 'Trial Plan',
+        pro: 'Pro Plan',
+        premium: 'Premium Plan',
+        lifetime: 'Lifetime Plan'
+      }
+    }
+  },
+  works: {
+    untitledWork: 'Untitled Work',
+    defaultStyle: 'General',
+    anonymousUser: 'Anonymous User',
+    playWork: 'Play music for {title}',
+    status: {
+      generating: 'Generating',
+      failed: 'Generation Failed'
+    },
+    meta: {
+      description: '{title} - An AI-generated music piece in {style} style by {author}. Created on PhotoSong, where images transform into melodies.',
+      title: '{title} | AI Music by {author}'
+    },
+    defaultDescription: 'Discover AI-generated music on PhotoSong - where images transform into beautiful melodies.'
+  },
+  creator: 'Creator',
+  sitemap: {
+    title: 'Sitemap Update',
+    description: 'Here you can view and update the sitemap',
+    update: 'Update Sitemap',
+    updating: 'Updating...',
+    download: 'Download Sitemap',
+    lastUpdate: 'Last Update',
+    status: {
+      idle: 'Sitemap is ready',
+      updating: 'Updating sitemap...',
+      success: 'Sitemap updated successfully',
+      error: 'Failed to update sitemap'
+    },
+    info: {
+      title: 'Sitemap Information',
+      totalUrls: 'Total URLs',
+      languages: 'Supported Languages',
+      languageList: 'English, Chinese, Russian',
+      cacheTime: 'Cache Time',
+      hour: 'hour'
+    },
+    seoTools: {
+      title: "SEO Tools",
+      tabs: {
+        performance: "Performance",
+        mobile: "Mobile",
+        competitor: "Competitor"
+      },
+      performance: {
+        placeholder: "Enter URL to analyze",
+        analyze: "Analyze",
+        metrics: {
+          speed: "Page Load Speed",
+          speedDescription: "Time taken to load the entire page",
+          fcp: "First Contentful Paint",
+          fcpDescription: "Time when the first content is painted",
+          lcp: "Largest Contentful Paint",
+          lcpDescription: "Time when the largest content element is painted"
+        },
+        suggestions: "Optimization Suggestions",
+        suggestions1: "Use lazy loading for images to improve page load speed",
+        suggestions2: "Enable browser caching to reduce repeated requests",
+        urlRequired: "Please enter a URL to analyze",
+        error: "Performance analysis failed, please try again later"
+      },
+      mobile: {
+        placeholder: "Enter URL to check",
+        check: "Check",
+        checks: {
+          responsive: "Responsive Design",
+          responsiveDescription: "Check if the page adapts to different screen sizes",
+          viewport: "Viewport Settings",
+          viewportDescription: "Check if mobile viewport is properly configured"
+        },
+        suggestions: "Improvement Suggestions",
+        viewportSuggestion: "Add appropriate viewport meta tag",
+        urlRequired: "Please enter a URL to check",
+        error: "Mobile check failed, please try again later"
+      },
+      competitor: {
+        placeholder: "Enter competitor's URL",
+        analyze: "Analyze",
+        overview: "Comparison Overview",
+        yours: "Your Site",
+        theirs: "Competitor",
+        metrics: {
+          performance: "Performance Score",
+          seo: "SEO Score",
+          accessibility: "Accessibility"
+        },
+        insights: "Competitive Analysis",
+        insights1: {
+          title: "Your Advantages",
+          description: "Your site performs better in these areas",
+          point1: "Faster page load speed than competitor",
+          point2: "Better mobile optimization"
+        },
+        insights2: {
+          title: "Areas for Improvement",
+          description: "Consider improving these aspects",
+          point1: "Add more original content",
+          point2: "Optimize internal link structure"
+        },
+        urlRequired: "Please enter competitor's URL",
+        error: "Competitor analysis failed, please try again later"
+      }
+    }
+  },
+  share: {
+    title: 'Share',
+    copySuccess: 'Link copied',
+    copyFailed: 'Copy failed',
+    shareFailed: 'Share failed',
+    shareSuccess: 'Share success'
+  },
+  userWorkDetail: {
+    meta: {
+      title: "{title} | {author}'s AI Music Creation - PhotoSong",
+      description: "Listen to '{title}', an AI-generated musical piece in {style} style by {author}. Discover unique compositions created from images on PhotoSong."
+    }
+  },
+  actions: {
+    share: 'Share'
+  },
+  articles: {
+    title: 'Articles',
+    description: 'Explore the latest news and guides about AI music creation',
+    allCategories: 'All Categories',
+    loading: 'Loading article...',
+    views: 'Views',
+    prevArticle: 'Previous Article',
+    nextArticle: 'Next Article',
+    likeSuccess: 'Article liked successfully',
+    errors: {
+      loadFailed: 'Failed to load articles'
+    },
+    detail: {
+      title: 'Article | PhotoSong',
+      description: 'Read interesting articles about music, technology, and creativity on PhotoSong'
+    },
+    empty: {
+      description: 'No articles available at the moment. Check back later for updates.'
+    },
+    categories: {
+      all: 'All',
+      news: 'News',
+      knowledge: 'Knowledge',
+      ai_music: 'AI Music',
+      professional: 'Professional',
+      tutorial: 'Tutorials',
+      research: 'Research',
+      industry: 'Industry',
+      community: 'Community',
+      music_knowledge: 'Music Knowledge'
+    },
+    generateArticle: 'Generate Article',
+    strategy: 'Generation Strategy',
+    tone: 'Tone',
+    length: 'Article Length',
+    language: 'Article Language',
+    keywords: 'Keywords',
+    keywordCount: 'Keyword Count',
+    enterKeywords: 'Enter Keywords',
+    autoKeywords: 'Auto Generate Keywords',
+    batchGenerate: 'Batch Generate',
+    imageGeneration: 'Image Generation',
+    draftSaving: 'Draft Saving',
+    afterGeneration: 'After Generation',
+    seoOptions: 'SEO Options',
+    mediaGeneration: 'Media Generation',
+    enhance: {
+      title: 'Enhance Article',
+      options: {
+        focusAreas: {
+          label: 'Focus Areas'
+        },
+        tone: {
+          label: 'Language Style'
+        },
+        targetLength: {
+          label: 'Target Length',
+          maintain: 'Maintain Current Length',
+          expand: 'Expand Content',
+          shorten: 'Shorten Content'
+        },
+        keepStructure: {
+          label: 'Keep Structure'
+        }
+      }
+    },
+    rewrite: {
+      title: 'Rewrite Article',
+      reference: {
+        label: 'Reference',
+        placeholder: 'Enter reference content',
+        similarity: {
+          label: 'Similarity',
+          high: 'High',
+          medium: 'Medium',
+          low: 'Low'
+        }
+      },
+      options: {
+        style: {
+          label: 'Writing Style',
+          original: 'Original',
+          creative: 'Creative',
+          professional: 'Professional',
+          casual: 'Casual'
+        },
+        focus: {
+          label: 'Focus Areas'
+        },
+        improvements: {
+          label: 'Areas to Improve'
+        }
+      },
+      button: 'Rewrite'
+    },
+    cover: {
+      label: 'Cover Image',
+      tip: 'Recommended size: 1200x630px, max 2MB'
+    },
+    changeStatus: 'Change Status',
+    status: {
+      draft: 'Draft',
+      published: 'Published',
+      archived: 'Archived'
+    },
+    related: 'Related Articles',
+    readMore: 'Read More',
+    publishedAt: 'Published on',
+    readingTime: '{time} min read',
+    share: 'Share Article',
+    backToList: 'Back to Articles'
+  },
+  about: {
+    title: 'About Us',
+    description: 'We are dedicated to innovative technology that transforms photos into music.'
+  },
+  community: {
+    title: 'Community',
+    description: 'Explore music works created by users',
+    loadingMore: 'Loading more...',
+    noMore: 'No more works',
+    empty: 'No works yet',
+    filter: {
+      all: 'All',
+      latest: 'Latest',
+      popular: 'Popular',
+      following: 'Following'
+    }
   }
-} 
+}

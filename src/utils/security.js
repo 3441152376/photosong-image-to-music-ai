@@ -1,5 +1,6 @@
 import CryptoJS from 'crypto-js'
 import { nanoid } from 'nanoid'
+import { AES, enc } from 'crypto-js'
 
 // 安全配置
 const SECURITY_CONFIG = {
@@ -122,6 +123,173 @@ export const verifyDataIntegrity = (data, signature) => {
   ).toString()
   
   return calculatedSignature === signature
+}
+
+// XSS 防护
+export function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+}
+
+// CSRF Token 管理
+export function setupCSRFProtection() {
+  const token = generateCSRFToken()
+  const cookieOptions = {
+    path: '/',
+    secure: true,
+    samesite: 'Strict',
+    partitioned: location.protocol === 'https:'
+  }
+  setCookie('XSRF-TOKEN', token, cookieOptions)
+  return token
+}
+
+function generateCSRFToken() {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36)
+}
+
+// 敏感数据加密
+export function encryptSensitiveData(data, key) {
+  return AES.encrypt(JSON.stringify(data), key).toString()
+}
+
+export function decryptSensitiveData(encryptedData, key) {
+  const bytes = AES.decrypt(encryptedData, key)
+  return JSON.parse(bytes.toString(enc.Utf8))
+}
+
+// 输入验证
+export function validateInput(input, type) {
+  const patterns = {
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    username: /^[a-zA-Z0-9_]{3,20}$/,
+    password: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/,
+    url: /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/,
+    phone: /^\+?[\d\s-]{10,}$/
+  }
+  return patterns[type]?.test(input) ?? false
+}
+
+// 内容安全策略
+export function setupCSP() {
+  const csp = {
+    'default-src': ["'self'"],
+    'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+    'style-src': ["'self'", "'unsafe-inline'"],
+    'img-src': ["'self'", 'data:', 'https:'],
+    'font-src': ["'self'", 'https:', 'data:'],
+    'connect-src': ["'self'", 'https:'],
+    'media-src': ["'self'"],
+    'object-src': ["'none'"],
+    'frame-src': ["'self'"],
+    'worker-src': ["'self'", 'blob:']
+  }
+  
+  return Object.entries(csp)
+    .map(([key, value]) => `${key} ${value.join(' ')}`)
+    .join('; ')
+}
+
+// 安全头部配置
+export const securityHeaders = {
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+}
+
+// 文件上传安全验证
+export function validateFileUpload(file) {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif']
+  const maxSize = 5 * 1024 * 1024 // 5MB
+  
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('不支持的文件类型')
+  }
+  
+  if (file.size > maxSize) {
+    throw new Error('文件大小超过限制')
+  }
+  
+  return true
+}
+
+// API 请求速率限制
+export class RateLimiter {
+  constructor(limit = 60, interval = 60000) {
+    this.limit = limit
+    this.interval = interval
+    this.requests = new Map()
+  }
+  
+  checkLimit(ip) {
+    const now = Date.now()
+    const userRequests = this.requests.get(ip) || []
+    
+    // 清除过期的请求记录
+    const validRequests = userRequests.filter(time => now - time < this.interval)
+    
+    if (validRequests.length >= this.limit) {
+      return false
+    }
+    
+    validRequests.push(now)
+    this.requests.set(ip, validRequests)
+    return true
+  }
+}
+
+// Cookie 管理函数
+export const cookieUtils = {
+  set(name, value, options = {}) {
+    const defaultOptions = {
+      path: '/',
+      secure: true,
+      samesite: 'Lax',
+      maxAge: 31536000,
+      partitioned: location.protocol === 'https:'
+    }
+    
+    const cookieOptions = { ...defaultOptions, ...options }
+    let cookieString = `${name}=${encodeURIComponent(value)}`
+    
+    if (cookieOptions.path) {
+      cookieString += `; path=${cookieOptions.path}`
+    }
+    if (cookieOptions.maxAge) {
+      cookieString += `; max-age=${cookieOptions.maxAge}`
+    }
+    if (cookieOptions.secure) {
+      cookieString += '; Secure'
+    }
+    if (cookieOptions.samesite) {
+      cookieString += `; SameSite=${cookieOptions.samesite}`
+    }
+    if (cookieOptions.partitioned) {
+      cookieString += '; Partitioned'
+    }
+    
+    document.cookie = cookieString
+  },
+  
+  get(name) {
+    const value = `; ${document.cookie}`
+    const parts = value.split(`; ${name}=`)
+    if (parts.length === 2) {
+      return decodeURIComponent(parts.pop().split(';').shift())
+    }
+    return null
+  },
+  
+  delete(name) {
+    document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; Secure; SameSite=Strict`
+  }
 }
 
 export default SECURITY_CONFIG 
