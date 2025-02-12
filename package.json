@@ -25,6 +25,7 @@
     "@bytemd/vue-next": "^1.21.0",
     "@element-plus/icons-vue": "^2.3.1",
     "@heroicons/vue": "^2.2.0",
+    "@nlpjs/lang-all": "^5.0.0-alpha.5",
     "@tiptap/extension-code-block": "^2.11.5",
     "@tiptap/extension-code-block-lowlight": "^2.11.5",
     "@tiptap/extension-image": "^2.11.5",
@@ -49,11 +50,14 @@
     "fingerprintjs2": "^2.1.4",
     "fs-extra": "^11.2.0",
     "html2canvas": "^1.4.1",
+    "kuroshiro": "^1.2.0",
+    "kuroshiro-analyzer-kuromoji": "^1.1.0",
     "leancloud-storage": "^4.15.2",
     "lowlight": "^3.3.0",
     "marked": "^15.0.6",
     "micro": "^10.0.1",
     "nanoid": "^5.0.9",
+    "natural": "^8.0.1",
     "pinia": "^2.1.7",
     "pinyin": "^4.0.0-alpha.2",
     "pinyin-pro": "^3.26.0",
@@ -79,6 +83,7 @@
     "@vue/server-renderer": "^3.5.13",
     "critters": "^0.0.23",
     "cron": "^3.5.0",
+    "esbuild": "^0.25.0",
     "eslint": "^8.56.0",
     "eslint-plugin-vue": "^9.20.1",
     "express": "^4.21.2",
@@ -101,5 +106,8 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "resolutions": {
+    "lodash.template": "^4.5.0"
+  }
 }

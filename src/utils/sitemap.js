@@ -1,6 +1,9 @@
 import AV from 'leancloud-storage'
 import { supportedLocales } from '../i18n'
 
+// 添加域名常量
+const SITE_DOMAIN = 'https://photosong.com'
+
 /**
  * 生成作品站点地图
  * @returns {Promise<string>} XML 格式的站点地图
@@ -21,7 +24,7 @@ export const generateWorksSitemap = async () => {
       // 为每个语言版本生成 URL
       supportedLocales.forEach(locale => {
         urls.push({
-          loc: `https://photosong.com/${locale}${path}`,
+          loc: `${SITE_DOMAIN}/${locale}${path}`,
           lastmod,
           changefreq: 'weekly',
           priority: 0.7,
@@ -29,12 +32,12 @@ export const generateWorksSitemap = async () => {
             // 添加 x-default
             {
               hreflang: 'x-default',
-              href: `https://photosong.com${path}`
+              href: `${SITE_DOMAIN}${path}`
             },
             // 添加所有语言版本
             ...supportedLocales.map(altLocale => ({
               hreflang: altLocale,
-              href: `https://photosong.com/${altLocale}${path}`
+              href: `${SITE_DOMAIN}/${altLocale}${path}`
             }))
           ]
         })
@@ -81,8 +84,8 @@ export const generateNewsSitemap = async () => {
  */
 export const generateSitemapIndex = () => {
   const sitemaps = [
-    'https://photosong.com/sitemap-main.xml',
-    'https://photosong.com/sitemap-works.xml'
+    `${SITE_DOMAIN}/sitemap-main.xml`,
+    `${SITE_DOMAIN}/sitemap-works.xml`
   ]
 
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -143,10 +146,10 @@ const getAllUrls = async () => {
 
   // 添加基础URL
   staticPaths.forEach(path => {
-    urls.add(`https://photosong.com${path}`)
+    urls.add(`${SITE_DOMAIN}${path}`)
     // 添加多语言版本
     supportedLocales.forEach(locale => {
-      urls.add(`https://photosong.com/${locale}${path}`)
+      urls.add(`${SITE_DOMAIN}/${locale}${path}`)
     })
   })
 
@@ -156,9 +159,9 @@ const getAllUrls = async () => {
     workQuery.equalTo('status', 'completed')
     const works = await workQuery.find()
     works.forEach(work => {
-      urls.add(`https://photosong.com/work/${work.id}`)
+      urls.add(`${SITE_DOMAIN}/work/${work.id}`)
       supportedLocales.forEach(locale => {
-        urls.add(`https://photosong.com/${locale}/work/${work.id}`)
+        urls.add(`${SITE_DOMAIN}/${locale}/work/${work.id}`)
       })
     })
 
@@ -168,9 +171,9 @@ const getAllUrls = async () => {
     const articles = await articleQuery.find()
     articles.forEach(article => {
       const slug = article.get('slug') || article.id
-      urls.add(`https://photosong.com/articles/${slug}`)
+      urls.add(`${SITE_DOMAIN}/articles/${slug}`)
       supportedLocales.forEach(locale => {
-        urls.add(`https://photosong.com/${locale}/articles/${slug}`)
+        urls.add(`${SITE_DOMAIN}/${locale}/articles/${slug}`)
       })
     })
 
@@ -179,9 +182,9 @@ const getAllUrls = async () => {
     newsQuery.equalTo('status', 'published')
     const news = await newsQuery.find()
     news.forEach(item => {
-      urls.add(`https://photosong.com/news/${item.id}`)
+      urls.add(`${SITE_DOMAIN}/news/${item.id}`)
       supportedLocales.forEach(locale => {
-        urls.add(`https://photosong.com/${locale}/news/${item.id}`)
+        urls.add(`${SITE_DOMAIN}/${locale}/news/${item.id}`)
       })
     })
   } catch (error) {
@@ -274,18 +277,18 @@ const generateMultilingualUrls = (path, priority = 0.8, changefreq = 'daily') =>
   
   // 添加 x-default 版本
   urls.push({
-    loc: `https://photosong.com${path}`,
+    loc: `${SITE_DOMAIN}${path}`,
     lastmod: new Date().toISOString(),
     changefreq,
     priority,
     alternates: [
       {
         hreflang: 'x-default',
-        href: `https://photosong.com${path}`
+        href: `${SITE_DOMAIN}${path}`
       },
       ...supportedLocales.map(locale => ({
         hreflang: locale,
-        href: `https://photosong.com/${locale}${path}`
+        href: `${SITE_DOMAIN}/${locale}${path}`
       }))
     ]
   })
@@ -293,18 +296,18 @@ const generateMultilingualUrls = (path, priority = 0.8, changefreq = 'daily') =>
   // 添加各语言版本
   supportedLocales.forEach(locale => {
     urls.push({
-      loc: `https://photosong.com/${locale}${path}`,
+      loc: `${SITE_DOMAIN}/${locale}${path}`,
       lastmod: new Date().toISOString(),
       changefreq,
       priority,
       alternates: [
         {
           hreflang: 'x-default',
-          href: `https://photosong.com${path}`
+          href: `${SITE_DOMAIN}${path}`
         },
         ...supportedLocales.map(altLocale => ({
           hreflang: altLocale,
-          href: `https://photosong.com/${altLocale}${path}`
+          href: `${SITE_DOMAIN}/${altLocale}${path}`
         }))
       ]
     })

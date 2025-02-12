@@ -2230,5 +2230,45 @@ export default {
       popular: 'Popular',
       following: 'Following'
     }
+  },
+  articleGenerator: {
+    title: 'Article Generator',
+    form: {
+      type: 'Article Type',
+      languages: 'Languages',
+      schedule: 'Schedule Settings',
+      frequency: 'Generation Frequency'
+    },
+    validation: {
+      noTypes: 'Please select at least one article type',
+      noLanguages: 'Please select at least one language'
+    },
+    buttons: {
+      generate: 'Generate Articles',
+      schedule: 'Save Schedule'
+    },
+    schedule: {
+      none: 'No Schedule',
+      daily: 'Daily',
+      weekly: 'Weekly',
+      monthly: 'Monthly'
+    },
+    results: {
+      title: 'Generation Results',
+      columns: {
+        id: 'Article ID',
+        type: 'Type',
+        language: 'Language',
+        status: 'Status',
+        error: 'Error'
+      },
+      status: {
+        success: 'Success',
+        error: 'Failed'
+      }
+    },
+    success: 'Successfully generated {success} out of {total} articles',
+    partialSuccess: 'Generated {success} out of {total} articles successfully',
+    error: 'Failed to generate articles'
   }
 }

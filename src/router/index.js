@@ -183,13 +183,19 @@ const routes = [
           return
         }
 
+        // 生成作品的 SEO 关键词
+        const keywords = generateWorkKeywords(work)
+
         // 设置作品信息到路由元数据
         to.meta.work = {
           title: work.get('title'),
           description: work.get('description'),
           imageUrl: work.get('imageUrl'),
           author: work.get('user')?.get('username') || t('workDetail.anonymousUser'),
-          style: work.get('style')
+          style: work.get('style'),
+          keywords: keywords,
+          publishedAt: work.get('createdAt'),
+          updatedAt: work.get('updatedAt')
         }
         
         next()
@@ -200,16 +206,17 @@ const routes = [
     },
     meta: {
       title: route => {
-        const workTitle = route?.meta?.work?.title || t('workDetail.defaultTitle');
-        const author = route?.meta?.work?.author || t('workDetail.anonymousUser');
-        const style = route?.meta?.work?.style || t('workDetail.defaultStyle');
-        return `${workTitle} by ${author} | ${style} Style Music | PhotoSong`;
+        const workTitle = route?.meta?.work?.title || t('workDetail.defaultTitle')
+        const author = route?.meta?.work?.author || t('workDetail.anonymousUser')
+        const style = route?.meta?.work?.style || t('workDetail.defaultStyle')
+        return `${workTitle} by ${author} | ${style} Style Music | PhotoSong`
       },
       description: route => t('workDetail.meta.description', { 
         title: route?.meta?.work?.title || t('workDetail.defaultTitle'), 
         author: route?.meta?.work?.author || t('workDetail.anonymousUser'),
         style: route?.meta?.work?.style || t('workDetail.defaultStyle')
-      })
+      }),
+      keywords: route => route?.meta?.work?.keywords || []
     }
   },
   {
@@ -369,6 +376,16 @@ const routes = [
       requiresAuth: true,
       requiresAdmin: true
     }
+  },
+  {
+    path: '/admin/article-generator',
+    name: 'ArticleGenerator',
+    component: () => import('@/views/admin/ArticleGenerator.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'articleGenerator.title'
+    }
   }
 ]
 
@@ -444,6 +461,31 @@ const router = createRouter({
 // 全局路由守卫
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
+  const { locale } = i18n.global
+  
+  // 从路径中获取语言
+  const pathLang = to.path.split('/')[1]
+  
+  // 如果路径中包含有效的语言代码
+  if (supportedLocales.includes(pathLang)) {
+    // 设置当前语言
+    locale.value = pathLang
+    localStorage.setItem('language', pathLang)
+  } else {
+    // 获取用户首选语言
+    const savedLang = localStorage.getItem('language')
+    const browserLang = navigator.language.split('-')[0]
+    const userLang = savedLang || (supportedLocales.includes(browserLang) ? browserLang : 'en')
+    
+    // 如果当前路径不包含语言前缀，重定向到带语言前缀的路径
+    if (!supportedLocales.includes(pathLang)) {
+      return next({
+        path: `/${userLang}${to.path}`,
+        query: to.query,
+        hash: to.hash
+      })
+    }
+  }
   
   // 确保用户状态已初始化
   if (!userStore.initialized) {
@@ -535,5 +577,67 @@ router.afterEach((to, from) => {
     document.title = title
   }
 })
+
+// 生成作品的 SEO 关键词
+function generateWorkKeywords(work) {
+  const baseKeywords = ['photo music', 'AI music', 'photo song']
+  const styleKeywords = generateStyleKeywords(work.get('style'))
+  const titleKeywords = generateTitleKeywords(work.get('title'))
+  const authorKeywords = generateAuthorKeywords(work.get('user')?.get('username'))
+  
+  // 合并所有关键词并去重
+  return [...new Set([
+    ...baseKeywords,
+    ...styleKeywords,
+    ...titleKeywords,
+    ...authorKeywords
+  ])]
+}
+
+// 根据音乐风格生成关键词
+function generateStyleKeywords(style) {
+  const styleMap = {
+    classical: ['classical music', 'orchestra', 'symphony', 'classical composition'],
+    jazz: ['jazz music', 'jazz composition', 'jazz style', 'jazz arrangement'],
+    rock: ['rock music', 'rock style', 'rock arrangement', 'electric guitar'],
+    electronic: ['electronic music', 'EDM', 'synthesizer', 'electronic beats'],
+    pop: ['pop music', 'popular music', 'pop style', 'pop arrangement']
+  }
+  
+  return styleMap[style] || []
+}
+
+// 从标题生成关键词
+function generateTitleKeywords(title) {
+  if (!title) return []
+  
+  // 移除特殊字符并分词
+  const words = title.toLowerCase()
+    .replace(/[^\w\s\u4e00-\u9fa5]/g, '')
+    .split(/\s+/)
+    .filter(word => word.length > 2)
+  
+  // 生成长尾关键词组合
+  const combinations = []
+  for (let i = 0; i < words.length; i++) {
+    for (let j = i + 1; j <= Math.min(i + 3, words.length); j++) {
+      combinations.push(words.slice(i, j).join(' '))
+    }
+  }
+  
+  return combinations
+}
+
+// 根据作者生成关键词
+function generateAuthorKeywords(username) {
+  if (!username) return []
+  
+  return [
+    `${username} music`,
+    `${username} compositions`,
+    `${username} photo music`,
+    `music by ${username}`
+  ]
+}
 
 export default router  

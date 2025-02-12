@@ -1190,5 +1190,45 @@ export default {
     createdAt: 'Создано',
     title: '{title} от {author}',
     description: 'Уникальное музыкальное произведение {title}, созданное {author} в стиле {style}'
+  },
+  articleGenerator: {
+    title: 'Генератор статей',
+    form: {
+      type: 'Тип статьи',
+      languages: 'Языки',
+      schedule: 'Настройки расписания',
+      frequency: 'Частота генерации'
+    },
+    validation: {
+      noTypes: 'Пожалуйста, выберите хотя бы один тип статьи',
+      noLanguages: 'Пожалуйста, выберите хотя бы один язык'
+    },
+    buttons: {
+      generate: 'Сгенерировать статьи',
+      schedule: 'Сохранить расписание'
+    },
+    schedule: {
+      none: 'Без расписания',
+      daily: 'Ежедневно',
+      weekly: 'Еженедельно',
+      monthly: 'Ежемесячно'
+    },
+    results: {
+      title: 'Результаты генерации',
+      columns: {
+        id: 'ID статьи',
+        type: 'Тип',
+        language: 'Язык',
+        status: 'Статус',
+        error: 'Ошибка'
+      },
+      status: {
+        success: 'Успешно',
+        error: 'Ошибка'
+      }
+    },
+    success: 'Успешно сгенерировано {success} из {total} статей',
+    partialSuccess: 'Успешно сгенерировано {success} из {total} статей',
+    error: 'Не удалось сгенерировать статьи'
   }
 }

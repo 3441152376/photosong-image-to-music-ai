@@ -262,15 +262,17 @@ const staticPages = [
 // 支持的语言列表
 const supportedLanguages = ['zh', 'en', 'ru']
 
+// 添加域名常量
+const SITE_DOMAIN = 'https://photosong.com'
+
 // 获取所有URL的函数
 const getAllUrls = (worksData, articlesData) => {
   const urls = new Set()
-  const baseUrl = 'https://photosong.com'
 
   // 添加静态页面URL
   staticPages.forEach(page => {
     supportedLanguages.forEach(lang => {
-      urls.add(`${baseUrl}/${lang}/${page}`)
+      urls.add(`${SITE_DOMAIN}/${lang}/${page}`)
     })
   })
 
@@ -278,7 +280,7 @@ const getAllUrls = (worksData, articlesData) => {
   if (worksData?.works) {
     worksData.works.forEach(work => {
       supportedLanguages.forEach(lang => {
-        urls.add(`${baseUrl}/${lang}/work/${work.id}`)
+        urls.add(`${SITE_DOMAIN}/${lang}/work/${work.id}`)
       })
     })
   }
@@ -287,7 +289,7 @@ const getAllUrls = (worksData, articlesData) => {
   if (worksData?.users) {
     worksData.users.forEach(userId => {
       supportedLanguages.forEach(lang => {
-        urls.add(`${baseUrl}/${lang}/user/${userId}`)
+        urls.add(`${SITE_DOMAIN}/${lang}/user/${userId}`)
       })
     })
   }
@@ -296,7 +298,7 @@ const getAllUrls = (worksData, articlesData) => {
   if (articlesData?.articles) {
     articlesData.articles.forEach(article => {
       supportedLanguages.forEach(lang => {
-        urls.add(`${baseUrl}/${lang}/article/${article.slug || article.id}`)
+        urls.add(`${SITE_DOMAIN}/${lang}/article/${article.slug || article.id}`)
       })
     })
   }

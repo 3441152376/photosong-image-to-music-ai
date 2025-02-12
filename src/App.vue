@@ -11,6 +11,16 @@ import LoadingScreen from '@/components/LoadingScreen.vue'
 import { useHead } from '@vueuse/head'
 import { enrichMetadata } from './services/contentService'
 import { useI18n } from 'vue-i18n'
+import { internalLinkOptimizer, hreflangGenerator, pageLoadOptimizer } from './utils/seoOptimizer'
+import { KeywordAnalyzer } from './utils/keywordAnalyzer'
+import { 
+  generateBaseStructuredData,
+  generateWorkStructuredData,
+  generateArticleStructuredData,
+  generateUserStructuredData,
+  generateSearchStructuredData,
+  generateFAQStructuredData
+} from './utils/structuredData'
 
 const route = useRoute()
 const { t, locale } = useI18n()
@@ -54,89 +64,24 @@ const defaultSeoData = computed(() => ({
   type: 'website'
 }))
 
-// 计算 SEO 元数据
-const seoMeta = computed(() => {
-  const meta = {
-    title: '',
-    description: '',
-    keywords: [],
-    image: defaultSeoData.value.image,
-    type: defaultSeoData.value.type,
-    locale: locale.value
-  }
+// 初始化关键词分析器
+const keywordAnalyzer = new KeywordAnalyzer()
 
-  // 处理标题
-  if (route.meta?.title) {
-    meta.title = typeof route.meta.title === 'function' 
-      ? route.meta.title(route) 
-      : route.meta.title
-  } else {
-    meta.title = defaultSeoData.value.title
-  }
-
-  // 处理描述
-  if (route.meta?.description) {
-    meta.description = typeof route.meta.description === 'function'
-      ? route.meta.description(route)
-      : route.meta.description
-  } else {
-    meta.description = defaultSeoData.value.description
-  }
-
-  // 处理关键词
-  if (route.meta?.keywords) {
-    meta.keywords = Array.isArray(route.meta.keywords)
-      ? route.meta.keywords
-      : defaultSeoData.value.keywords
-  } else {
-    meta.keywords = defaultSeoData.value.keywords
-  }
-
-  // 处理图片
-  if (route.meta?.image) {
-    meta.image = route.meta.image
-  }
-
-  // 处理类型
-  if (route.meta?.type) {
-    meta.type = route.meta.type
-  }
-
-  // 根据不同页面类型处理特殊元数据
-  switch (route.name) {
-    case 'work':
-      if (route.meta?.work) {
-        meta.title = t('work.meta.title', {
-          title: route.meta.work.title,
-          author: route.meta.work.author?.username
-        })
-        meta.description = route.meta.work.description || meta.description
-        meta.image = route.meta.work.imageUrl || meta.image
-        meta.type = 'article'
-      }
-      break
-    case 'profile':
-      if (route.meta?.user) {
-        meta.title = t('profile.meta.title', {
-          username: route.meta.user.username
-        })
-        meta.description = t('profile.meta.description', {
-          username: route.meta.user.username
-        })
-        meta.image = route.meta.user.avatar || meta.image
-        meta.type = 'profile'
-      }
-      break
-  }
-
-  return meta
-})
-
-// 监听路由变化
+// 监听路由变化，优化内部链接和性能
 watch(
   () => route.fullPath,
-  (newPath, oldPath) => {
+  async (newPath, oldPath) => {
     if (newPath !== oldPath) {
+      // 更新内部链接图
+      internalLinkOptimizer.addPage(newPath, route.matched.map(r => r.path))
+      internalLinkOptimizer.calculatePageRanks()
+
+      // 检查页面性能
+      const performance = await pageLoadOptimizer.checkPagePerformance(window.location.href)
+      if (performance && !performance.isOptimal) {
+        console.warn('Performance issues detected:', performance.recommendations)
+      }
+
       // 强制组件重新渲染
       nextTick(() => {
         window.scrollTo(0, 0)
@@ -178,125 +123,143 @@ onMounted(() => {
 
 const currentUrl = computed(() => `https://photosong.com${route.fullPath}`)
 
-// 添加结构化数据
-const structuredData = computed(() => {
-  if (!seoMeta.value) return {}
-
-  const baseData = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: seoMeta.value.title,
-    description: seoMeta.value.description,
-    url: window.location.origin,
-    inLanguage: locale.value,
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: `${window.location.origin}/search?q={search_term_string}`,
-      'query-input': 'required name=search_term_string'
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'PhotoSong',
-      logo: {
-        '@type': 'ImageObject',
-        url: `${window.location.origin}/logo.png`
-      }
-    },
-    offers: {
-      '@type': 'AggregateOffer',
-      priceCurrency: 'USD',
-      lowPrice: '0',
-      highPrice: '99',
-      offerCount: '3'
-    }
+// 增强 SEO 元数据计算
+const seoMeta = computed(() => {
+  const meta = {
+    title: '',
+    description: '',
+    keywords: [],
+    image: defaultSeoData.value.image,
+    type: defaultSeoData.value.type,
+    locale: locale.value,
+    hreflang: []
   }
 
-  // 根据不同页面类型添加不同的结构化数据
+  // 处理标题
+  if (route.meta?.title) {
+    meta.title = typeof route.meta.title === 'function' 
+      ? route.meta.title(route) 
+      : route.meta.title
+  } else {
+    meta.title = defaultSeoData.value.title
+  }
+
+  // 处理描述
+  if (route.meta?.description) {
+    meta.description = typeof route.meta.description === 'function'
+      ? route.meta.description(route)
+      : route.meta.description
+  } else {
+    meta.description = defaultSeoData.value.description
+  }
+
+  // 处理关键词
+  if (route.meta?.keywords) {
+    meta.keywords = Array.isArray(route.meta.keywords)
+      ? route.meta.keywords
+      : defaultSeoData.value.keywords
+  } else {
+    meta.keywords = defaultSeoData.value.keywords
+  }
+
+  // 处理图片
+  if (route.meta?.image) {
+    meta.image = route.meta.image
+  }
+
+  // 处理类型
+  if (route.meta?.type) {
+    meta.type = route.meta.type
+  }
+
+  // 生成 hreflang 标签
+  meta.hreflang = hreflangGenerator.generateHreflangTags(route.path)
+
+  // 根据不同页面类型处理特殊元数据
   switch (route.name) {
     case 'work':
       if (route.meta?.work) {
-        return {
-          '@context': 'https://schema.org',
-          '@type': 'MusicComposition',
-          name: seoMeta.value.title,
-          description: seoMeta.value.description,
-          image: seoMeta.value.image,
-          datePublished: route.meta.work.createdAt,
-          dateModified: route.meta.work.updatedAt,
-          inLanguage: locale.value,
-          author: {
-            '@type': 'Person',
-            name: route.meta.work.author?.username,
-            image: route.meta.work.author?.avatar
-          },
-          publisher: baseData.publisher,
-          genre: route.meta.work.style,
-          isPartOf: {
-            '@type': 'CreativeWork',
-            name: 'PhotoSong Community',
-            url: `${window.location.origin}/community`
-          },
-          potentialAction: {
-            '@type': 'ListenAction',
-            target: window.location.href
-          }
-        }
+        meta.title = t('work.meta.title', {
+          title: route.meta.work.title,
+          author: route.meta.work.author?.username
+        })
+        meta.description = route.meta.work.description || meta.description
+        meta.image = route.meta.work.imageUrl || meta.image
+        meta.type = 'article'
+        
+        // 添加地理位置关键词
+        const locationKeywords = keywordAnalyzer.addLocationKeywords(
+          route.meta.work.description,
+          locale.value,
+          { country: route.meta.work.country, city: route.meta.work.city }
+        )
+        meta.keywords = [...meta.keywords, ...locationKeywords]
       }
-      return baseData
+      break
     case 'profile':
       if (route.meta?.user) {
-        return {
-          '@context': 'https://schema.org',
-          '@type': 'ProfilePage',
-          name: seoMeta.value.title,
-          description: seoMeta.value.description,
-          inLanguage: locale.value,
-          mainEntity: {
-            '@type': 'Person',
-            name: route.meta.user.username,
-            image: route.meta.user.avatar,
-            url: window.location.href,
-            worksFor: baseData.publisher,
-            knowsAbout: ['Music', 'AI Music Generation', 'Photography'],
-            interactionStatistic: {
-              '@type': 'InteractionCounter',
-              interactionType: 'https://schema.org/CreateAction',
-              userInteractionCount: route.meta.user.worksCount || 0
-            }
-          }
-        }
+        meta.title = t('profile.meta.title', {
+          username: route.meta.user.username
+        })
+        meta.description = t('profile.meta.description', {
+          username: route.meta.user.username
+        })
+        meta.image = route.meta.user.avatar || meta.image
+        meta.type = 'profile'
       }
-      return baseData
-    case 'community':
-      return {
-        '@context': 'https://schema.org',
-        '@type': 'CollectionPage',
-        name: seoMeta.value.title,
-        description: seoMeta.value.description,
-        inLanguage: locale.value,
-        publisher: baseData.publisher,
-        isPartOf: {
-          '@type': 'WebSite',
-          name: 'PhotoSong',
-          url: window.location.origin
-        }
+      break
+  }
+
+  return meta
+})
+
+// 添加 structuredData 计算属性
+const structuredData = computed(() => {
+  // 根据路由类型返回不同的结构化数据
+  switch (route.name) {
+    case 'work':
+      if (route.meta?.work) {
+        return generateWorkStructuredData(route.meta.work, {
+          language: locale.value
+        })
       }
-    case 'articles':
-      return {
-        '@context': 'https://schema.org',
-        '@type': 'Blog',
-        name: seoMeta.value.title,
-        description: seoMeta.value.description,
-        inLanguage: locale.value,
-        publisher: baseData.publisher,
-        isPartOf: {
-          '@type': 'WebSite',
-          name: 'PhotoSong',
-          url: window.location.origin
-        }
+      break
+    case 'article':
+      if (route.meta?.article) {
+        return generateArticleStructuredData(route.meta.article, {
+          language: locale.value
+        })
       }
+      break
+    case 'profile':
+      if (route.meta?.user) {
+        return generateUserStructuredData(route.meta.user, {
+          language: locale.value
+        })
+      }
+      break
+    case 'search':
+      if (route.query.q) {
+        return generateSearchStructuredData(route.query.q, route.meta?.results || [], {
+          language: locale.value
+        })
+      }
+      break
+    case 'faq':
+      if (route.meta?.faqs) {
+        return generateFAQStructuredData(route.meta.faqs, {
+          language: locale.value
+        })
+      }
+      break
     default:
-      return baseData
+      // 默认返回基础结构化数据
+      return generateBaseStructuredData({
+        type: 'WebPage',
+        name: seoMeta.value?.title,
+        description: seoMeta.value?.description,
+        language: locale.value
+      })
   }
 })
 
@@ -350,6 +313,9 @@ useHead({
     }
   ],
   link: [
+    // Hreflang 标签
+    ...computed(() => seoMeta.value?.hreflang || []).value,
+    // 预连接优化
     {
       rel: 'preconnect',
       href: 'https://lc-gluttony.s3.amazonaws.com'

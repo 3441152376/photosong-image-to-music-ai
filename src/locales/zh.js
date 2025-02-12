@@ -99,6 +99,35 @@ export default {
         description: '为您的社交帖子创作独特的音乐内容'
       }
     },
+    applications: {
+      ariaLabel: 'AI图像音乐生成器应用：{title}',
+      title: 'AI图像音乐生成器的专业应用',
+      description: '探索 PhotoSong 在各个专业领域的创新应用',
+      media: {
+        title: '媒体和娱乐',
+        description: '为音乐家、电影制作人、动画师提供快速生成免版税的配乐和背景音乐的解决方案，让创作更加便捷。'
+      },
+      advertising: {
+        title: '广告和营销',
+        description: '帮助广告商创建独特的音频品牌、声音标识，将品牌图像转化为富有感染力的广告音乐。'
+      },
+      gifts: {
+        title: '个性化礼物',
+        description: '将珍贵的照片转换成独特的音乐礼物，为您的亲人创造难忘的情感体验。'
+      },
+      therapy: {
+        title: '治疗工具',
+        description: '通过音乐帮助视障人士感知视觉世界，打开感知的新维度。'
+      },
+      education: {
+        title: '教育应用',
+        description: '作为创新的教学工具，帮助学习者理解视觉艺术、图像处理和声音合成。'
+      },
+      creative: {
+        title: '创意探索',
+        description: '为艺术家提供将视觉作品转化为音频创作的新方式，开启跨媒介艺术表达。'
+      }
+    },
     testimonials: {
       ariaLabel: '来自 {author}（{title}）的评价',
       title: '用户评价',
@@ -1972,5 +2001,45 @@ export default {
       popular: '热门',
       following: '关注'
     }
+  },
+  articleGenerator: {
+    title: '文章生成器',
+    form: {
+      type: '文章类型',
+      languages: '语言',
+      schedule: '定时设置',
+      frequency: '生成频率'
+    },
+    validation: {
+      noTypes: '请至少选择一种文章类型',
+      noLanguages: '请至少选择一种语言'
+    },
+    buttons: {
+      generate: '生成文章',
+      schedule: '保存定时设置'
+    },
+    schedule: {
+      none: '不定时',
+      daily: '每天',
+      weekly: '每周',
+      monthly: '每月'
+    },
+    results: {
+      title: '生成结果',
+      columns: {
+        id: '文章ID',
+        type: '类型',
+        language: '语言',
+        status: '状态',
+        error: '错误'
+      },
+      status: {
+        success: '成功',
+        error: '失败'
+      }
+    },
+    success: '成功生成 {total} 篇文章中的 {success} 篇',
+    partialSuccess: '在 {total} 篇文章中成功生成 {success} 篇',
+    error: '文章生成失败'
   }
 }
