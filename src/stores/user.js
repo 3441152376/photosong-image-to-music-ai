@@ -244,13 +244,16 @@ export const useUserStore = defineStore('user', () => {
   // 登录
   const login = async (email, password) => {
     try {
+      // 将邮箱转换为小写
+      email = email.toLowerCase()
+      
       loading.value = true
       error.value = null
       
       // 验证邮箱格式
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(email)) {
-        throw new Error('FORMAT_ERROR')
+        throw new Error(t('auth.validation.email.invalid'))
       }
       
       // 验证密码长度
@@ -394,6 +397,9 @@ export const useUserStore = defineStore('user', () => {
   // 注册
   const register = async (username, email, password, avatar = null) => {
     try {
+      // 将邮箱转换为小写
+      email = email.toLowerCase()
+      
       loading.value = true
       error.value = null
       
@@ -590,13 +596,16 @@ export const useUserStore = defineStore('user', () => {
   // 重置密码
   const resetPassword = async (email) => {
     try {
+      // 将邮箱转换为小写
+      email = email.toLowerCase()
+      
       loading.value = true
       error.value = null
       
       // 验证邮箱格式
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(email)) {
-        throw new Error('邮箱格式不正确')
+        throw new Error(t('auth.validation.email.invalid'))
       }
       
       await AV.User.requestPasswordReset(email)
@@ -623,6 +632,9 @@ export const useUserStore = defineStore('user', () => {
   // 重新发送验证邮件
   const resendVerificationEmail = async (email) => {
     try {
+      // 将邮箱转换为小写
+      email = email.toLowerCase()
+      
       loading.value = true
       error.value = null
       

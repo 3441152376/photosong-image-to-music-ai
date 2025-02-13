@@ -90,113 +90,39 @@ const completedWorksCount = computed(() =>
   works.value.filter(w => w.status.toUpperCase() === WorkStatus.COMPLETED).length
 )
 
-// 检查任务状态
+// 检查单个任务状态
 const checkTaskStatus = async (taskId, workId) => {
   try {
-    const response = await fetch(`https://api.whatai.cc/suno/fetch/${taskId}`, {
-      method: 'GET',
+    const response = await fetch(`${import.meta.env.VITE_AI_BASE_URL}/status/${taskId}`, {
       headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUNO_API_KEY}`,
-        'Accept': 'application/json'
+        'Authorization': `Bearer ${import.meta.env.VITE_AI_TOKEN}`
       }
     })
 
     if (!response.ok) {
-      throw new Error('检查任务状态失败')
+      throw new Error('Failed to fetch task status')
     }
 
     const data = await response.json()
-
-    // 获取作品记录
+    
+    // 更新作品状态
     const work = AV.Object.createWithoutData('Work', workId)
+    await work.fetch()
     
-    // 根据任务状态更新作品状态
-    if (data.code === 'success' && data.data) {
-      if (data.data.status === 'SUCCESS') {
-        // 更新作品状态为已完成
-        work.set('status', WorkStatus.COMPLETED)
-        if (data.data.data && data.data.data.length > 0) {
-          const musicData = data.data.data[0]
-          work.set('audioUrl', musicData.audio_url)
-          work.set('videoUrl', musicData.video_url || '')
-          work.set('modelName', musicData.model_name)
-          work.set('metadata', musicData.metadata)
-        }
-        work.set('progress', 100)
-        work.set('completedTime', new Date())
-        work.set('finishTime', data.data.finish_time)
-        
-        // 清除定时器
-        if (checkIntervals.value[workId]) {
-          clearInterval(checkIntervals.value[workId])
-          delete checkIntervals.value[workId]
-        }
-        
-        // 刷新作品列表
-        await fetchWorks()
-      } else if (data.data.status === 'FAILED') {
-        // 更新作品状态为失败
-        work.set('status', WorkStatus.FAILED)
-        work.set('error', data.data.fail_reason || '音乐生成失败')
-        work.set('progress', 0)
-        
-        // 清除定时器
-        if (checkIntervals.value[workId]) {
-          clearInterval(checkIntervals.value[workId])
-          delete checkIntervals.value[workId]
-        }
-        
-        // 刷新作品列表
-        await fetchWorks()
-      } else if (data.data.status === 'IN_PROGRESS') {
-        // 更新进度
-        work.set('status', WorkStatus.GENERATING)
-        const progress = parseInt(data.data.progress) || 0
-        work.set('progress', progress)
-        work.set('lastCheckTime', new Date())
-        work.set('startTime', data.data.start_time)
+    if (data.status !== work.get('status')) {
+      work.set('status', data.status)
+      if (data.status === WorkStatus.COMPLETED) {
+        work.set('completedAt', new Date())
+        work.set('audioUrl', data.audioUrl)
+      } else if (data.status === WorkStatus.FAILED) {
+        work.set('error', data.error || 'Generation failed')
       }
-    } else {
-      throw new Error(data.message || '检查任务状态失败')
+      await work.save()
     }
     
-    // 保存更新
-    await work.save()
-    
+    return data.status
   } catch (error) {
-    // 增加重试次数
-    const work = AV.Object.createWithoutData('Work', workId)
-    const retryCount = work.get('retryCount') || 0
-    work.set('retryCount', retryCount + 1)
-    
-    // 如果重试次数超过限制，标记为失败
-    if (retryCount >= 5) {
-      work.set('status', WorkStatus.FAILED)
-      work.set('error', '检查任务状态失败次数过多')
-      
-      // 清除定时器
-      if (checkIntervals.value[workId]) {
-        clearInterval(checkIntervals.value[workId])
-        delete checkIntervals.value[workId]
-      }
-      
-      // 刷新作品列表
-      await fetchWorks()
-    }
-    
-    await work.save()
-  }
-}
-
-// 添加重试函数
-const retryWithDelay = async (fn, retries = 3, delay = 1000) => {
-  try {
-    return await fn()
-  } catch (error) {
-    if (retries > 0 && error.code === 429) {
-      await new Promise(resolve => setTimeout(resolve, delay))
-      return retryWithDelay(fn, retries - 1, delay * 2)
-    }
+    console.error('Check task status error:', error)
     throw error
   }
 }
@@ -208,11 +134,17 @@ const fetchWorks = async () => {
     query.equalTo('user', AV.User.current())
     query.include('user')
     query.descending('createdAt')
-    const results = await retryWithDelay(() => query.find())
+    const results = await query.find()
     
     // 处理作品数据
     works.value = results.map(work => {
-      const status = (work.get('status') || 'completed').toUpperCase()
+      // 确保状态值大写并使用 WorkStatus 枚举
+      let status = (work.get('status') || WorkStatus.COMPLETED).toUpperCase()
+      // 兼容旧的状态值
+      if (status === 'IN_PROGRESS') status = WorkStatus.GENERATING
+      if (status === 'SUCCESS') status = WorkStatus.COMPLETED
+      if (status === 'FAIL') status = WorkStatus.FAILED
+      
       return {
         id: work.id,
         title: work.get('title') || t('profile.works.untitledWork'),
@@ -230,8 +162,7 @@ const fetchWorks = async () => {
     
     // 检查是否有未完成的作品
     const pendingWorks = works.value.filter(work => 
-      work.status === WorkStatus.GENERATING || 
-      work.status === WorkStatus.PENDING
+      [WorkStatus.GENERATING, WorkStatus.PENDING].includes(work.status)
     )
     
     // 如果有未完成的作品，自动刷新状态
@@ -239,6 +170,7 @@ const fetchWorks = async () => {
       await handleRefresh()
     }
   } catch (error) {
+    console.error('Fetch works error:', error)
     ElMessage.error(t('profile.works.fetchError'))
   }
 }
@@ -433,13 +365,14 @@ onUnmounted(() => {
 // 添加刷新作品状态的功能
 const handleRefresh = async () => {
   try {
-    loading.value = true
+    loadingStates.value.works = true
     
     // 过滤出未完成的作品
     const pendingWorks = works.value.filter(work => 
-      work.status === 'generating' || 
-      work.status === 'pending'
+      [WorkStatus.GENERATING, WorkStatus.PENDING].includes(work.status)
     )
+    
+    console.log('Pending works:', pendingWorks) // 添加调试日志
     
     if (pendingWorks.length === 0) {
       ElMessage.info(t('profile.works.noWorkToRefresh'))
@@ -447,11 +380,19 @@ const handleRefresh = async () => {
     }
 
     // 对每个未完成的作品检查任务状态
-    for (const work of pendingWorks) {
+    const refreshPromises = pendingWorks.map(work => {
       if (work.taskId) {
-        await checkTaskStatus(work.taskId, work.id)
+        console.log('Checking work:', work.id, work.status, work.taskId) // 添加调试日志
+        return checkTaskStatus(work.taskId, work.id)
+          .catch(error => {
+            console.error(`Failed to check status for work ${work.id}:`, error)
+            return null
+          })
       }
-    }
+      return Promise.resolve(null)
+    })
+
+    await Promise.all(refreshPromises)
 
     // 重新获取所有作品的最新状态
     const query = new AV.Query('Work')
@@ -460,26 +401,35 @@ const handleRefresh = async () => {
     query.descending('createdAt')
     const results = await query.find()
     
-    // 处理更新的作品数据
-    works.value = results.map(work => ({
-      id: work.id,
-      title: work.get('title') || t('profile.works.untitledWork'),
-      imageUrl: work.get('imageUrl') || '',
-      audioUrl: work.get('audioUrl') || '',
-      style: work.get('style') || '',
-      status: work.get('status') || 'completed',
-      progress: work.get('progress') || 0,
-      createdAt: work.createdAt,
-      user: work.get('user'),
-      error: work.get('error'),
-      taskId: work.get('taskId')
-    }))
+    works.value = results.map(work => {
+      // 确保状态值大写并使用 WorkStatus 枚举
+      let status = (work.get('status') || WorkStatus.COMPLETED).toUpperCase()
+      // 兼容旧的状态值
+      if (status === 'IN_PROGRESS') status = WorkStatus.GENERATING
+      if (status === 'SUCCESS') status = WorkStatus.COMPLETED
+      if (status === 'FAIL') status = WorkStatus.FAILED
+      
+      return {
+        id: work.id,
+        title: work.get('title') || t('profile.works.untitledWork'),
+        imageUrl: work.get('imageUrl') || '',
+        audioUrl: work.get('audioUrl') || '',
+        style: work.get('style') || '',
+        status: status,
+        progress: work.get('progress') || 0,
+        createdAt: work.createdAt,
+        user: work.get('user'),
+        error: work.get('error'),
+        taskId: work.get('taskId')
+      }
+    })
 
     ElMessage.success(t('profile.works.refreshSuccess', { count: pendingWorks.length }))
   } catch (error) {
+    console.error('Refresh error:', error)
     ElMessage.error(t('profile.works.refreshError'))
   } finally {
-    loading.value = false
+    loadingStates.value.works = false
   }
 }
 

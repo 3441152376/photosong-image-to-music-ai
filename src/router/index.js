@@ -75,13 +75,13 @@ const routes = [
     name: 'Home',
     component: () => import('../views/Home.vue'),
     meta: {
-      title: 'Photo Song - Turn Photos into Music | AI Photo Music Generator',
+      title: 'PhotoSongAi - Turn Photos into Music | AI Photo Music Generator',
       description: 'Transform your photos into unique musical pieces with our AI-powered platform. Create personalized songs from your images using advanced AI technology.',
       keywords: 'photo to music, image to music converter, AI music generator, photo song maker',
       requiresAuth: false,
       schema: {
         '@type': 'WebPage',
-        name: 'Photo Song - Home',
+        name: 'PhotoSongAi - Home',
         description: 'Transform photos into music with AI technology'
       }
     }
@@ -91,8 +91,8 @@ const routes = [
     name: 'Auth',
     component: () => import('../views/Auth.vue'),
     meta: {
-      title: '登录/注册 - Photo Song',
-      description: '加入 Photo Song，开启您的音乐创作之旅',
+      title: '登录/注册 - PhotoSongAi',
+      description: '加入 PhotoSongAi，开启您的音乐创作之旅',
       requiresGuest: true,
       layout: 'auth'
     }
@@ -389,6 +389,52 @@ const routes = [
   }
 ]
 
+// 动态路由配置
+const dynamicRoutes = [
+  {
+    path: '/work/:id',
+    component: () => import('../views/WorkDetail.vue'),
+    meta: {
+      prerender: true,
+      sitemap: true,
+      getPrerenderPaths: async () => {
+        const query = new AV.Query('Work')
+        query.equalTo('status', 'completed')
+        const works = await query.find()
+        return works.map(work => `/work/${work.id}`)
+      }
+    }
+  },
+  {
+    path: '/article/:id',
+    component: () => import('../views/ArticleDetail.vue'),
+    meta: {
+      prerender: true,
+      sitemap: true,
+      getPrerenderPaths: async () => {
+        const query = new AV.Query('Article')
+        query.equalTo('status', 'published')
+        const articles = await query.find()
+        return articles.map(article => `/article/${article.id}`)
+      }
+    }
+  },
+  {
+    path: '/user/:id',
+    component: () => import('../views/Profile.vue'),
+    meta: {
+      prerender: true,
+      sitemap: true,
+      getPrerenderPaths: async () => {
+        const query = new AV.Query('_User')
+        query.equalTo('isPublic', true)
+        const users = await query.find()
+        return users.map(user => `/user/${user.id}`)
+      }
+    }
+  }
+]
+
 // 生成带语言前缀的路由
 const generateLocalizedRoutes = (routes) => {
   const localizedRoutes = []
@@ -397,24 +443,44 @@ const generateLocalizedRoutes = (routes) => {
   localizedRoutes.push({
     path: '/',
     redirect: to => {
+      // 不处理特殊文件
+      if (to.path.match(/\.(xml|txt|ico|js|css|png|jpg|jpeg|gif|svg)$/)) {
+        return to.path
+      }
+      
       // 获取用户首选语言或浏览器语言
       const browserLang = navigator.language.split('-')[0]
       const userLang = localStorage.getItem('language')
       const locale = userLang || (supportedLocales.includes(browserLang) ? browserLang : 'en')
       
-      // 如果有 query 参数，保留它们
-      return {
-        path: `/${locale}${to.path}`,
-        query: to.query
+      // 移除末尾的 index.html
+      let targetPath = to.path.replace(/\/index\.html\/?$/, '')
+      
+      // 如果路径为根路径，直接添加语言前缀
+      if (targetPath === '/') {
+        targetPath = `/${locale}`
+      } else {
+        // 否则在路径前添加语言前缀
+        targetPath = `/${locale}${targetPath}`
       }
+      
+      // 如果有 query 参数，保留它们
+      if (Object.keys(to.query).length > 0) {
+        return {
+          path: targetPath,
+          query: to.query
+        }
+      }
+      
+      return targetPath
     }
   })
 
   // 为每种语言生成路由
   supportedLocales.forEach(locale => {
     routes.forEach(route => {
-      // 跳过重定向路由的本地化
-      if (route.redirect) {
+      // 跳过重定向路由和特殊文件的本地化
+      if (route.redirect || route.path.match(/\.(xml|txt|ico|js|css|png|jpg|jpeg|gif|svg)$/)) {
         localizedRoutes.push(route)
         return
       }
@@ -438,13 +504,21 @@ const generateLocalizedRoutes = (routes) => {
   localizedRoutes.push({
     path: '/:pathMatch(.*)*',
     redirect: to => {
+      // 不处理特殊文件
+      if (to.path.match(/\.(xml|txt|ico|js|css|png|jpg|jpeg|gif|svg)$/)) {
+        return to.path
+      }
+      
       // 获取用户首选语言或浏览器语言
       const browserLang = navigator.language.split('-')[0]
       const userLang = localStorage.getItem('language')
       const locale = userLang || (supportedLocales.includes(browserLang) ? browserLang : 'en')
       
+      // 移除末尾的 index.html
+      let targetPath = to.path.replace(/\/index\.html\/?$/, '')
+      
       return {
-        path: `/${locale}${to.path}`,
+        path: `/${locale}${targetPath}`,
         query: to.query
       }
     }
@@ -564,6 +638,39 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  // 处理预渲染
+  if (to.matched.some(record => record.meta.prerender)) {
+    const PreRenderedPage = AV.Object.extend('PreRenderedPage')
+    const query = new AV.Query(PreRenderedPage)
+    query.equalTo('path', to.path)
+    query.equalTo('locale', i18n.global.locale.value)
+    
+    const page = await query.first()
+    
+    if (!page || isPrerendering()) {
+      // 如果页面未预渲染或正在预渲染中，更新预渲染内容
+      try {
+        const pageData = await fetchPageData(to)
+        if (pageData) {
+          const html = await generatePrerenderedHTML({
+            path: to.path,
+            locale: i18n.global.locale.value,
+            data: pageData
+          })
+          
+          const newPage = page || new PreRenderedPage()
+          newPage.set('path', to.path)
+          newPage.set('locale', i18n.global.locale.value)
+          newPage.set('html', html)
+          newPage.set('type', getPageType(to.path))
+          await newPage.save()
+        }
+      } catch (error) {
+        console.error('Failed to update prerendered content:', error)
+      }
+    }
+  }
+
   next()
 })
 
@@ -577,6 +684,11 @@ router.afterEach((to, from) => {
     document.title = title
   }
 })
+
+// 检查是否在预渲染过程中
+function isPrerendering() {
+  return typeof window === 'undefined' || window.__PRERENDER_INJECTED
+}
 
 // 生成作品的 SEO 关键词
 function generateWorkKeywords(work) {

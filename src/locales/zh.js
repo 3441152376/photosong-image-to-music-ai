@@ -1133,7 +1133,9 @@ export default {
       avatarUpload: '头像上传成功',
       register: '注册成功！请查收验证邮件。新用户可获得180积分和1天免费会员！',
       login: '登录成功',
-      googleLogin: '使用Google登录成功'
+      googleLogin: '使用Google登录成功',
+      profileUpdated: '个人资料更新成功',
+      avatarUpdated: '头像更新成功'
     },
     emailVerification: {
       required: '请先验证邮箱',

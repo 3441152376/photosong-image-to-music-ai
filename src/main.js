@@ -43,21 +43,13 @@ router.beforeEach(async (to, from, next) => {
     await vueApp.config.globalProperties.$handleSEO(to)
   }
   
-  // 只在客户端环境下执行预渲染检查
-  if (typeof window !== 'undefined') {
-    try {
-      const result = await prerenderMiddleware({
-        headers: { 'user-agent': navigator.userAgent },
-        path: to.path
-      })
-      
-      if (result) {
-        document.documentElement.innerHTML = result
-        return
-      }
-    } catch (error) {
-      console.error('Prerender error:', error)
+  try {
+    const shouldContinue = await prerenderMiddleware(to, from)
+    if (!shouldContinue) {
+      return false
     }
+  } catch (error) {
+    console.error('Prerender error:', error)
   }
   
   next()
@@ -66,10 +58,7 @@ router.beforeEach(async (to, from, next) => {
 // 处理更新预渲染内容
 router.afterEach(async (to) => {
   try {
-    await updatePrerenderMiddleware({
-      method: 'GET',
-      path: to.path
-    })
+    await updatePrerenderMiddleware(to)
   } catch (error) {
     console.error('Update prerender error:', error)
   }
