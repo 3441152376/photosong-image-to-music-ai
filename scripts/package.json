@@ -1,0 +1,11 @@
+{
+  "name": "work-status-checker",
+  "version": "1.0.0",
+  "description": "Script to check work generation status",
+  "main": "check_work_status.js",
+  "dependencies": {
+    "leancloud-storage": "^4.15.0",
+    "node-fetch": "^2.6.9",
+    "dotenv": "^16.0.3"
+  }
+}

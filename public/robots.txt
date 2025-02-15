@@ -7,9 +7,6 @@ Allow: /
 
 # Global Sitemaps
 Sitemap: https://photosong.com/sitemap.xml
-Sitemap: https://photosong.com/main-sitemap.xml
-Sitemap: https://photosong.com/works-sitemap.xml
-Sitemap: https://photosong.com/news-sitemap.xml
 
 # Language paths
 Allow: /zh/
@@ -57,4 +54,27 @@ Allow: /ai-music-creator
 Allow: /ai-beat-maker
 Allow: /photo-to-music
 Allow: /image-to-music
+
+# 禁止访问管理后台和API
+Disallow: /admin/
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /login/
+Disallow: /register/
+Disallow: /reset-password/
+
+# 禁止访问开发和测试环境
+Disallow: /dev/
+Disallow: /test/
+Disallow: /staging/
+
+# 允许访问静态资源
+Allow: /images/
+Allow: /assets/
+Allow: /static/
+Allow: /sitemap.xml
+Allow: /favicon.ico
+
+# 设置爬虫抓取延迟
+Crawl-delay: 10
 

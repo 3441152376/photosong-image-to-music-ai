@@ -46,6 +46,15 @@ const PAYMENT_STATUS_CONFIG = {
   timeout: 60000      // 60秒超时
 }
 
+// 支付API配置
+const PAYMENT_API = {
+  baseUrl: 'https://pay1.egg404.com',
+  port: 3102,
+  endpoints: {
+    createCheckoutSession: '/create-checkout-session'
+  }
+}
+
 // 获取支付状态描述
 const getPaymentStatusDescription = (status, locale = 'en') => {
   const statusMessages = {
@@ -84,113 +93,35 @@ export const createCheckoutSession = async (priceId, metadata = {}) => {
     throw new Error('Unauthorized')
   }
 
-  // 获取当前语言
-  const currentLocale = i18n.global.locale.value || 'en'
-
-  // 确定计划类型和具体计划
-  let planType, plan, points
-  if (priceId.startsWith('price_1Qme')) {
-    planType = 'points'
-    // 根据价格ID确定积分数量
-    if (priceId === PRICE_IDS.points.small) points = 100
-    else if (priceId === PRICE_IDS.points.medium) points = 300
-    else if (priceId === PRICE_IDS.points.large) points = 1000
-  } else {
-    planType = 'subscription'
-    // 根据价格ID确定具体计划
-    if (priceId === PRICE_IDS.memberships.trial) plan = 'trial'
-    else if (priceId === PRICE_IDS.memberships.pro) plan = 'pro'
-    else if (priceId === PRICE_IDS.memberships.premium) plan = 'premium'
-    else if (priceId === PRICE_IDS.memberships.lifetime) plan = 'lifetime'
-  }
-
-  // 构建成功和取消URL（使用查询参数）
-  const successUrl = `${window.location.origin}${currentLocale === 'en' ? '' : '/' + currentLocale}/payment/success?session_id={CHECKOUT_SESSION_ID}`
-  const cancelUrl = `${window.location.origin}${currentLocale === 'en' ? '' : '/' + currentLocale}/payment/cancel`
-
-  // 添加用户信息到元数据
-  const enrichedMetadata = {
-    userId: currentUser.id,
-    userEmail: currentUser.get('email'),
-    username: currentUser.get('username'),
-    locale: currentLocale,
-    planType,
-    ...(plan && { plan }), // 仅在订阅类型时添加
-    ...(points && { points: points.toString() }), // 仅在积分类型时添加
-    timestamp: new Date().toISOString(),
-    priceId, // 添加价格ID用于验证
-    ...metadata // 保留其他可能的元数据
-  }
-
   try {
-    console.log('Creating checkout session with:', {
-      priceId,
-      successUrl,
-      cancelUrl,
-      metadata: enrichedMetadata
-    })
-
-  const response = await fetch(`${API_BASE_URL}/create-checkout-session`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...getHeaders()
-    },
-    body: JSON.stringify({ 
-      priceId,
-        metadata: enrichedMetadata,
-        paymentMethodTypes: ['card'],
-      successUrl,
-      cancelUrl,
-        customerEmail: currentUser.get('email'),
-        allowPromotionCodes: false,
-        locale: currentLocale
-      })
-  })
-
-  if (!response.ok) {
-      let errorMessage = 'Failed to create checkout session'
-      try {
-        const responseText = await response.text()
-        console.error('Raw error response:', responseText)
-        
-        try {
-          const errorData = JSON.parse(responseText)
-          console.error('Checkout session creation failed:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorData
-          })
-          errorMessage = errorData.message || errorData.error || errorMessage
-        } catch (parseError) {
-          console.error('Response is not JSON:', parseError)
+    const response = await fetch(`${PAYMENT_API.baseUrl}${PAYMENT_API.endpoints.createCheckoutSession}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        priceId,
+        metadata: {
+          userId: currentUser.id,
+          userEmail: currentUser.get('email'),
+          username: currentUser.get('username'),
+          locale: i18n.global.locale.value || 'en',
+          ...metadata
         }
-      } catch (error) {
-        console.error('Failed to read error response:', error)
-      }
-      throw new Error(errorMessage)
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || '支付创建失败');
     }
 
-    const result = await response.json()
-    
-    // 保存元数据到本地存储
-    if (result.id) {
-      localStorage.setItem(`payment_metadata_${result.id}`, JSON.stringify(enrichedMetadata))
-      console.log('Saved payment metadata:', {
-        sessionId: result.id,
-        metadata: enrichedMetadata
-      })
-    }
-    
-    return {
-      url: result.url,
-      sessionId: result.id,
-      status: result.status
-    }
+    const { url } = await response.json();
+    return { url };
   } catch (error) {
-    console.error('Failed to create checkout session:', error)
-    throw error
+    console.error('Payment creation error:', error);
+    ElMessage.error(i18n.global.t('payment.error.checkout'));
+    throw error;
   }
 }
 

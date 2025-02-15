@@ -2,19 +2,32 @@ import AV from 'leancloud-storage'
 import { generateHTML } from '../utils/htmlGenerator'
 import { getPageTitle, getPageDescription } from '../utils/meta'
 import { supportedLocales } from '../i18n'
-import router from '../router'
+import { prerenderCache } from '../utils/prerenderCache'
+import { prerenderMonitor } from '../utils/prerenderMonitor'
+import { queueManager } from '../utils/queueManager'
+import { seoOptimizer } from '../utils/seoOptimizer'
 
 class PrerenderService {
   constructor() {
-    this.queue = []
-    this.isProcessing = false
-    this.maxConcurrent = 5
     this.retryAttempts = 3
     this.retryDelay = 5000 // 5秒
+    this.initialized = false
+    this.router = null
+  }
+
+  // 设置路由实例
+  setRouter(router) {
+    this.router = router
   }
 
   // 初始化预渲染服务
   async initialize() {
+    if (this.initialized) return
+    if (!this.router) {
+      console.warn('Router not set, skipping prerender initialization')
+      return
+    }
+    
     try {
       // 获取所有需要预渲染的路由
       const routes = this.getPrerenderedRoutes()
@@ -22,72 +35,86 @@ class PrerenderService {
       // 获取所有支持的语言
       const locales = supportedLocales
       
-      // 生成预渲染队列
+      // 生成预渲染任务
+      const tasks = []
       for (const route of routes) {
         if (route.meta?.getPrerenderPaths) {
           const paths = await route.meta.getPrerenderPaths()
           for (const path of paths) {
             for (const locale of locales) {
-              this.queue.push({ path, locale })
+              tasks.push(() => this.prerenderPage({ path, locale }))
             }
           }
         }
       }
       
-      // 开始处理队列
-      this.processQueue()
+      // 设置队列完成回调
+      queueManager.setCompleteCallback(() => {
+        console.log('预渲染队列处理完成')
+        console.log('性能报告:', prerenderMonitor.getReport())
+      })
+      
+      // 添加任务到队列
+      await queueManager.addBatch(tasks)
+      
+      this.initialized = true
     } catch (error) {
       console.error('Failed to initialize prerender service:', error)
+      throw error
     }
   }
 
   // 获取需要预渲染的路由
   getPrerenderedRoutes() {
-    return router.getRoutes().filter(route => route.meta?.prerender)
-  }
-
-  // 处理预渲染队列
-  async processQueue() {
-    if (this.isProcessing || this.queue.length === 0) {
-      return
-    }
-
-    this.isProcessing = true
-    const batch = this.queue.splice(0, this.maxConcurrent)
-    
-    try {
-      await Promise.all(batch.map(item => this.prerenderPage(item)))
-    } catch (error) {
-      console.error('Error processing prerender batch:', error)
-    }
-
-    this.isProcessing = false
-    
-    // 如果队列还有内容，继续处理
-    if (this.queue.length > 0) {
-      setTimeout(() => this.processQueue(), 1000)
-    }
+    if (!this.router) return []
+    return this.router.getRoutes().filter(route => route.meta?.prerender)
   }
 
   // 预渲染单个页面
   async prerenderPage({ path, locale }, attempt = 1) {
+    const pageMetrics = prerenderMonitor.startPage()
+    const cacheKey = PrerenderCache.generateKey(path, locale)
+    
     try {
+      // 检查缓存
+      const cached = prerenderCache.get(cacheKey)
+      if (cached) {
+        prerenderMonitor.endPage(pageMetrics, true)
+        return cached
+      }
+
       // 获取页面数据
       const pageData = await this.fetchPageData(path)
       
       if (!pageData) {
         console.warn(`No data found for path: ${path}`)
-        return
+        prerenderMonitor.endPage(pageMetrics, false, new Error('No data found'))
+        return null
       }
+
+      // 生成SEO元数据
+      const type = this.getPageType(path)
+      const metadata = seoOptimizer.generateMetadata({
+        type,
+        data: pageData,
+        locale
+      })
+
+      // 优化内容
+      const content = await this.generateDynamicContent(pageData, locale)
+      const optimizedContent = seoOptimizer.optimizeContent(content, metadata.keywords)
 
       // 生成预渲染内容
       const html = await generateHTML({
-        title: getPageTitle(pageData, locale),
-        description: getPageDescription(pageData, locale),
+        title: metadata.title,
+        description: metadata.description,
+        keywords: metadata.keywords.join(', '),
         locale,
-        content: await this.generateDynamicContent(pageData, locale),
+        content: optimizedContent,
         path,
-        url: `https://photosong.com/${locale}${path}`
+        url: metadata.canonical,
+        structuredData: metadata.structuredData,
+        alternateLinks: metadata.alternateLinks
       })
 
       // 保存预渲染内容
@@ -105,21 +132,31 @@ class PrerenderService {
       }
       
       page.set('html', html)
-      page.set('type', this.getPageType(path))
+      page.set('type', type)
       page.set('lastUpdated', new Date())
+      page.set('metadata', metadata)
       
       await page.save()
       
+      // 更新缓存
+      prerenderCache.set(cacheKey, html)
+      
+      prerenderMonitor.endPage(pageMetrics, true)
       console.log(`Successfully prerendered: ${locale}${path}`)
+      
+      return html
     } catch (error) {
       console.error(`Failed to prerender ${locale}${path}:`, error)
+      prerenderMonitor.endPage(pageMetrics, false, error)
       
       // 重试逻辑
       if (attempt < this.retryAttempts) {
-        setTimeout(() => {
-          this.prerenderPage({ path, locale }, attempt + 1)
-        }, this.retryDelay * attempt)
+        console.log(`Retrying ${locale}${path} (attempt ${attempt + 1}/${this.retryAttempts})`)
+        await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt))
+        return this.prerenderPage({ path, locale }, attempt + 1)
       }
+      
+      throw error
     }
   }
 
@@ -136,21 +173,27 @@ class PrerenderService {
     const type = this.getPageType(path)
     const id = path.split('/').pop()
     
-    switch (type) {
-      case 'work':
-        return this.fetchWorkData(id)
-      case 'article':
-        return this.fetchArticleData(id)
-      case 'user':
-        return this.fetchUserData(id)
-      default:
-        return this.fetchStaticPageData(path)
+    try {
+      switch (type) {
+        case 'work':
+          return await this.fetchWorkData(id)
+        case 'article':
+          return await this.fetchArticleData(id)
+        case 'user':
+          return await this.fetchUserData(id)
+        default:
+          return await this.fetchStaticPageData(path)
+      }
+    } catch (error) {
+      console.error(`Failed to fetch ${type} data for ${path}:`, error)
+      throw error
     }
   }
 
   // 获取作品数据
   async fetchWorkData(id) {
     const query = new AV.Query('Work')
+    query.include('user')
     const work = await query.get(id)
     return work ? work.toJSON() : null
   }
@@ -158,6 +201,7 @@ class PrerenderService {
   // 获取文章数据
   async fetchArticleData(id) {
     const query = new AV.Query('Article')
+    query.include('author')
     const article = await query.get(id)
     return article ? article.toJSON() : null
   }
@@ -171,7 +215,6 @@ class PrerenderService {
 
   // 获取静态页面数据
   async fetchStaticPageData(path) {
-    // 实现静态页面数据获取逻辑
     return {
       type: 'page',
       path
@@ -180,26 +223,47 @@ class PrerenderService {
 
   // 生成动态内容
   async generateDynamicContent(data, locale) {
-    // 根据页面类型生成相应的动态内容
     const type = this.getPageType(data.path)
     
-    switch (type) {
-      case 'work':
-        return this.generateWorkContent(data, locale)
-      case 'article':
-        return this.generateArticleContent(data, locale)
-      case 'user':
-        return this.generateUserContent(data, locale)
-      default:
-        return this.generateStaticContent(data, locale)
+    try {
+      switch (type) {
+        case 'work':
+          return await this.generateWorkContent(data, locale)
+        case 'article':
+          return await this.generateArticleContent(data, locale)
+        case 'user':
+          return await this.generateUserContent(data, locale)
+        default:
+          return await this.generateStaticContent(data, locale)
+      }
+    } catch (error) {
+      console.error(`Failed to generate content for ${type}:`, error)
+      throw error
     }
+  }
+
+  // 获取性能报告
+  getPerformanceReport() {
+    return {
+      monitor: prerenderMonitor.getReport(),
+      cache: prerenderCache.getStats(),
+      queue: queueManager.getStatus()
+    }
+  }
+
+  // 清理缓存
+  cleanupCache() {
+    prerenderCache.cleanup()
+  }
+
+  // 重置性能监控
+  resetMonitor() {
+    prerenderMonitor.reset()
   }
 }
 
 // 导出预渲染服务实例
 export const prerenderService = new PrerenderService()
 
-// 初始化预渲染服务
-prerenderService.initialize().catch(error => {
-  console.error('Failed to initialize prerender service:', error)
-}) 
+// 不要在这里初始化预渲染服务
+// 而是在应用初始化时调用 

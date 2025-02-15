@@ -1048,7 +1048,7 @@ export default {
         required: '您还未上传头像，请上传头像',
         dialog: {
           title: '需要上传头像',
-          content: '为了提升社区体验，我们需要您上传一个头像。这将帮助其他用户更好地认识您。',
+          content: '为了让其他用户更好地认识您，并提供更好的社区体验，请上传您的个人头像。',
           confirm: '立即上传',
           cancel: '稍后再说'
         }
@@ -1936,10 +1936,15 @@ export default {
         all: '全部作品'
       },
       refresh: '刷新状态',
-      refreshSuccess: '状态刷新成功',
-      refreshError: '状态刷新失败',
-      noWorkToRefresh: '没有需要刷新的作品',
-      deleteOnlyFailed: '只能删除失败的作品'
+      refreshSuccess: '成功刷新{count}个作品状态',
+      refreshError: '刷新状态失败',
+      refreshPartialFail: '{count}个作品刷新失败',
+      noWorksToCheck: '没有需要检查的作品',
+      checkingWorks: '正在检查{count}个作品状态',
+      workCompleted: '作品生成完成',
+      workFailed: '作品生成失败',
+      deleteOnlyFailed: '只能删除失败的作品',
+      fetchError: '获取作品列表失败'
     },
     user: {
       works: '作品',

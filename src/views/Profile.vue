@@ -29,6 +29,7 @@ const showPaymentSuccess = ref(false)
 const paymentResult = ref(null)
 const isEditingUsername = ref(false)
 const tempUsername = ref('')
+const pollTimer = ref(null)
 
 const form = ref({
   username: userStore.currentUser ? userStore.currentUser.username : '',
@@ -74,9 +75,9 @@ const truncatedUsername = computed(() => {
 // 作品状态选项
 const statusOptions = computed(() => [
   { value: 'all', label: t('profile.works.filter.all') },
-  { value: WorkStatus.GENERATING, label: t('profile.works.status.GENERATING') },
-  { value: WorkStatus.COMPLETED, label: t('profile.works.status.COMPLETED') },
-  { value: WorkStatus.FAILED, label: t('profile.works.status.FAILED') }
+  { value: 'generating', label: t('profile.works.status.GENERATING') },
+  { value: 'completed', label: t('profile.works.status.COMPLETED') },
+  { value: 'failed', label: t('profile.works.status.FAILED') }
 ])
 
 // 过滤后的作品列表
@@ -87,91 +88,391 @@ const filteredWorks = computed(() => {
 
 // 已完成作品数量
 const completedWorksCount = computed(() => 
-  works.value.filter(w => w.status.toUpperCase() === WorkStatus.COMPLETED).length
+  works.value.filter(w => w.status.toUpperCase() === 'COMPLETED').length
 )
 
 // 检查单个任务状态
 const checkTaskStatus = async (taskId, workId) => {
   try {
-    const response = await fetch(`${import.meta.env.VITE_AI_BASE_URL}/status/${taskId}`, {
+    console.log(`Checking status for work ${workId} with taskId ${taskId}`)
+    
+    const apiUrl = `${import.meta.env.VITE_AI_BASE_URL}/suno/fetch/${taskId}`
+    console.log('Using API URL:', apiUrl)
+    
+    const response = await fetch(apiUrl, {
       headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_AI_TOKEN}`
+        'Authorization': `Bearer ${import.meta.env.VITE_AI_TOKEN}`,
+        'Accept': 'application/json'
       }
     })
 
     if (!response.ok) {
-      throw new Error('Failed to fetch task status')
+      console.error(`API request failed for work ${workId}: ${response.status} ${response.statusText}`)
+      return false
     }
 
     const data = await response.json()
-    
-    // 更新作品状态
+    console.log(`API response for work ${workId}:`, JSON.stringify(data, null, 2))
+
+    // 获取 LeanCloud 中的作品对象
     const work = AV.Object.createWithoutData('Work', workId)
     await work.fetch()
     
-    if (data.status !== work.get('status')) {
-      work.set('status', data.status)
-      if (data.status === WorkStatus.COMPLETED) {
-        work.set('completedAt', new Date())
-        work.set('audioUrl', data.audioUrl)
-      } else if (data.status === WorkStatus.FAILED) {
-        work.set('error', data.error || 'Generation failed')
+    const currentStatus = work.get('status')?.toLowerCase()
+    let newStatus = currentStatus
+    let shouldUpdate = false
+
+    // 检查 API 响应中的状态和数据
+    if (data.code === 'success' && data.data) {
+      const apiStatus = data.data.status?.toUpperCase()
+      
+      if (apiStatus === 'SUCCESS') {
+        // 只有当前状态不是 completed 时才更新
+        if (currentStatus !== 'completed') {
+          // 如果生成成功且有音频数据
+          if (data.data.data && data.data.data.length > 0) {
+            const musicData = data.data.data[0]
+            newStatus = 'completed'
+            shouldUpdate = true
+            
+            // 更新音频相关数据
+            work.set('audioUrl', musicData.audio_url)
+            work.set('videoUrl', musicData.video_url || '')
+            work.set('modelName', musicData.model_name)
+            work.set('metadata', musicData.metadata)
+            work.set('progress', 100)
+            work.set('completedTime', new Date())
+            work.set('finishTime', data.data.finish_time)
+            
+            // 更新歌词和其他元数据
+            if (musicData.metadata) {
+              work.set('lyrics', musicData.metadata.prompt || '')
+              work.set('duration', musicData.metadata.duration || 0)
+            }
+            
+            console.log(`Work ${workId} completed with audio URL:`, musicData.audio_url)
+            
+            // 创建完成通知
+            const Notification = AV.Object.extend('Notification')
+            const notification = new Notification()
+            notification.set('user', work.get('user'))
+            notification.set('type', 'work_completed')
+            notification.set('work', work)
+            notification.set('read', false)
+            await notification.save()
+            
+            ElMessage.success(t('profile.works.workCompleted'))
+          }
+        }
+      } else if (apiStatus === 'FAILED') {
+        // 只有当前状态不是 failed 时才更新
+        if (currentStatus !== 'failed') {
+          newStatus = 'failed'
+          shouldUpdate = true
+          
+          work.set('error', data.data.fail_reason || '音乐生成失败')
+          work.set('progress', 0)
+          
+          console.log(`Work ${workId} failed with error:`, data.data.fail_reason)
+          
+          // 创建失败通知
+          const Notification = AV.Object.extend('Notification')
+          const notification = new Notification()
+          notification.set('user', work.get('user'))
+          notification.set('type', 'work_failed')
+          notification.set('work', work)
+          notification.set('read', false)
+          await notification.save()
+          
+          ElMessage.error(t('profile.works.workFailed'))
+        }
+      } else if (apiStatus === 'IN_PROGRESS') {
+        // 如果正在生成中，更新进度
+        const progress = parseInt(data.data.progress) || 0
+        work.set('progress', progress)
+        work.set('lastCheckTime', new Date())
+        work.set('startTime', data.data.start_time)
+        await work.save()
+        
+        // 不需要更新状态，保持 generating
+        console.log(`Work ${workId} is still generating, progress: ${progress}%`)
       }
-      await work.save()
+      
+      // 只有在状态需要更新时才保存
+      if (shouldUpdate && newStatus !== currentStatus) {
+        console.log(`Updating work ${workId} status from ${currentStatus} to ${newStatus}`)
+        work.set('status', newStatus)
+        await work.save()
+        
+        // 更新本地状态
+        const workIndex = works.value.findIndex(w => w.id === workId)
+        if (workIndex !== -1) {
+          works.value[workIndex] = {
+            ...works.value[workIndex],
+            status: newStatus,
+            audioUrl: work.get('audioUrl'),
+            videoUrl: work.get('videoUrl'),
+            modelName: work.get('modelName'),
+            metadata: work.get('metadata'),
+            lyrics: work.get('lyrics'),
+            duration: work.get('duration'),
+            completedTime: work.get('completedTime'),
+            finishTime: work.get('finishTime'),
+            error: work.get('error'),
+            progress: work.get('progress')
+          }
+          works.value = [...works.value] // 触发视图更新
+        }
+      }
     }
     
-    return data.status
+    // 返回是否完成或失败
+    return newStatus === 'completed' || newStatus === 'failed'
   } catch (error) {
-    console.error('Check task status error:', error)
-    throw error
+    console.error(`Error checking work ${workId} status:`, error)
+    return false
+  }
+}
+
+// 添加检查状态标志
+const isChecking = ref(false)
+
+// 刷新作品状态
+const handleRefresh = async () => {
+  // 如果正在检查中，直接返回
+  if (isChecking.value) {
+    console.log('Already checking works, skipping...')
+    return
+  }
+
+  try {
+    isChecking.value = true
+    loading.value = true
+    
+    // 重新获取作品列表以确保数据最新
+    await fetchWorks()
+    
+    // 获取需要检查的作品
+    const worksToCheck = works.value.filter(work => 
+      ['generating', 'pending', 'IN_PROGRESS'].includes(work.status?.toLowerCase())
+    )
+    
+    if (worksToCheck.length > 0) {
+      // 只在手动刷新时显示提示
+      if (!pollTimer.value) {
+        ElMessage.info(t('profile.works.checkingWorks', { count: worksToCheck.length }))
+      }
+      
+      // 并行检查所有作品
+      const results = await Promise.all(worksToCheck.map(async (work) => {
+        if (!work.taskId) {
+          console.log(`Work ${work.id} has no taskId, skipping...`)
+          return { success: false, workId: work.id, error: 'No taskId' }
+        }
+        
+        try {
+          const success = await checkTaskStatus(work.taskId, work.id)
+          return { success, workId: work.id }
+        } catch (error) {
+          console.error(`Error checking work ${work.id}:`, error)
+          return { success: false, workId: work.id, error: error.message }
+        }
+      }))
+      
+      // 统计结果
+      const successCount = results.filter(r => r.success).length
+      const failedCount = results.filter(r => !r.success).length
+      
+      // 只在手动刷新时显示结果消息
+      if (!pollTimer.value) {
+        if (successCount > 0) {
+          ElMessage.success(t('profile.works.refreshSuccess', { count: successCount }))
+        }
+        if (failedCount > 0) {
+          ElMessage.warning(t('profile.works.refreshPartialFail', { count: failedCount }))
+        }
+      }
+      
+      // 如果还有未完成的作品，继续轮询
+      const remainingPendingWorks = works.value.filter(work => 
+        ['generating', 'pending', 'IN_PROGRESS'].includes(work.status?.toLowerCase())
+      )
+      
+      if (remainingPendingWorks.length > 0) {
+        startPolling()
+      } else {
+        stopPolling()
+      }
+    } else {
+      // 只在手动刷新时显示提示
+      if (!pollTimer.value) {
+        ElMessage.info(t('profile.works.noWorksToCheck'))
+      }
+      stopPolling()
+    }
+  } catch (error) {
+    console.error('Error refreshing works:', error)
+    // 只在手动刷新时显示错误消息
+    if (!pollTimer.value) {
+      ElMessage.error(t('profile.works.refreshError'))
+    }
+  } finally {
+    loading.value = false
+    isChecking.value = false
+  }
+}
+
+// 开始轮询未完成的作品
+const startPolling = () => {
+  // 如果已经在轮询中，不要重复启动
+  if (pollTimer.value) {
+    console.log('Polling already active, skipping...')
+    return
+  }
+  
+  console.log('Starting polling...')
+  
+  // 设置新的定时器，每10秒检查一次
+  pollTimer.value = setInterval(async () => {
+    // 获取所有需要检查的作品
+    const worksToCheck = works.value.filter(work => 
+      ['generating', 'pending', 'IN_PROGRESS'].includes(work.status?.toLowerCase())
+    )
+    
+    if (worksToCheck.length > 0) {
+      console.log(`Polling: checking ${worksToCheck.length} works...`)
+      await handleRefresh()
+    } else {
+      console.log('No works need checking, stopping polling')
+      stopPolling()
+    }
+  }, 10000) // 10秒检查一次
+}
+
+// 停止轮询
+const stopPolling = () => {
+  if (pollTimer.value) {
+    console.log('Stopping polling')
+    clearInterval(pollTimer.value)
+    pollTimer.value = null
   }
 }
 
 // 获取用户作品
 const fetchWorks = async () => {
   try {
+    loading.value = true
+    
     const query = new AV.Query('Work')
     query.equalTo('user', AV.User.current())
     query.include('user')
     query.descending('createdAt')
-    const results = await query.find()
+    query.limit(1000)
     
-    // 处理作品数据
+    const results = await query.find()
     works.value = results.map(work => {
-      // 确保状态值大写并使用 WorkStatus 枚举
-      let status = (work.get('status') || WorkStatus.COMPLETED).toUpperCase()
+      // 统一状态格式为小写
+      let status = (work.get('status') || '').toLowerCase()
+      
       // 兼容旧的状态值
-      if (status === 'IN_PROGRESS') status = WorkStatus.GENERATING
-      if (status === 'SUCCESS') status = WorkStatus.COMPLETED
-      if (status === 'FAIL') status = WorkStatus.FAILED
+      if (status === 'in_progress') status = 'generating'
+      if (status === 'success') status = 'completed'
+      if (status === 'fail') status = 'failed'
+      if (!status || status === '') status = 'generating'
       
       return {
         id: work.id,
         title: work.get('title') || t('profile.works.untitledWork'),
+        description: work.get('description') || '',
         imageUrl: work.get('imageUrl') || '',
         audioUrl: work.get('audioUrl') || '',
-        style: work.get('style') || '',
+        videoUrl: work.get('videoUrl') || '',
+        modelName: work.get('modelName') || '',
+        metadata: work.get('metadata') || null,
+        lyrics: work.get('lyrics') || '',
+        duration: work.get('duration') || 0,
         status: status,
         progress: work.get('progress') || 0,
-        createdAt: work.createdAt,
-        user: work.get('user'),
-        error: work.get('error'),
-        taskId: work.get('taskId')
+        taskId: work.get('taskId') || '',
+        error: work.get('error') || '',
+        completedTime: work.get('completedTime'),
+        finishTime: work.get('finishTime'),
+        createdAt: work.createdAt
       }
     })
     
-    // 检查是否有未完成的作品
+    // 检查是否有需要处理的作品
     const pendingWorks = works.value.filter(work => 
-      [WorkStatus.GENERATING, WorkStatus.PENDING].includes(work.status)
+      ['generating', 'pending', 'IN_PROGRESS'].includes(work.status?.toLowerCase())
     )
     
-    // 如果有未完成的作品，自动刷新状态
     if (pendingWorks.length > 0) {
-      await handleRefresh()
+      console.log(`Found ${pendingWorks.length} pending works, starting polling...`)
+      startPolling()
     }
   } catch (error) {
-    console.error('Fetch works error:', error)
+    console.error('Error fetching works:', error)
     ElMessage.error(t('profile.works.fetchError'))
+  } finally {
+    loading.value = false
+  }
+}
+
+// 在组件挂载时获取作品并开始轮询
+onMounted(async () => {
+  try {
+    loading.value = true
+    await fetchWorks()
+  } catch (error) {
+    console.error('Error in onMounted:', error)
+  } finally {
+    loading.value = false
+  }
+  
+  // 添加页面可见性变化监听
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+// 在组件卸载时清理
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  stopPolling()
+})
+
+// 处理页面可见性变化
+const handleVisibilityChange = async () => {
+  if (document.hidden) {
+    // 页面隐藏时停止轮询
+    console.log('Page hidden, stopping polling')
+    stopPolling()
+  } else {
+    // 页面可见时重新获取作品列表并恢复轮询
+    console.log('Page visible, refreshing works and resuming polling')
+    
+    try {
+      // 重新获取作品列表
+      await fetchWorks()
+      
+      // 检查是否有需要处理的作品
+      const pendingWorks = works.value.filter(work => 
+        ['generating', 'pending', 'IN_PROGRESS'].includes(work.status?.toLowerCase())
+      )
+      
+      console.log(`Found ${pendingWorks.length} pending works:`,
+        pendingWorks.map(w => ({
+          id: w.id,
+          status: w.status,
+          taskId: w.taskId
+        }))
+      )
+      
+      if (pendingWorks.length > 0) {
+        // 如果有需要处理的作品，开始轮询
+        startPolling()
+      }
+    } catch (error) {
+      console.error('Error refreshing works on visibility change:', error)
+    }
   }
 }
 
@@ -360,79 +661,13 @@ onUnmounted(() => {
     clearInterval(interval)
   })
   checkIntervals.value = {}
+  
+  stopPolling()
+  
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 // 添加刷新作品状态的功能
-const handleRefresh = async () => {
-  try {
-    loadingStates.value.works = true
-    
-    // 过滤出未完成的作品
-    const pendingWorks = works.value.filter(work => 
-      [WorkStatus.GENERATING, WorkStatus.PENDING].includes(work.status)
-    )
-    
-    console.log('Pending works:', pendingWorks) // 添加调试日志
-    
-    if (pendingWorks.length === 0) {
-      ElMessage.info(t('profile.works.noWorkToRefresh'))
-      return
-    }
-
-    // 对每个未完成的作品检查任务状态
-    const refreshPromises = pendingWorks.map(work => {
-      if (work.taskId) {
-        console.log('Checking work:', work.id, work.status, work.taskId) // 添加调试日志
-        return checkTaskStatus(work.taskId, work.id)
-          .catch(error => {
-            console.error(`Failed to check status for work ${work.id}:`, error)
-            return null
-          })
-      }
-      return Promise.resolve(null)
-    })
-
-    await Promise.all(refreshPromises)
-
-    // 重新获取所有作品的最新状态
-    const query = new AV.Query('Work')
-    query.equalTo('user', AV.User.current())
-    query.include('user')
-    query.descending('createdAt')
-    const results = await query.find()
-    
-    works.value = results.map(work => {
-      // 确保状态值大写并使用 WorkStatus 枚举
-      let status = (work.get('status') || WorkStatus.COMPLETED).toUpperCase()
-      // 兼容旧的状态值
-      if (status === 'IN_PROGRESS') status = WorkStatus.GENERATING
-      if (status === 'SUCCESS') status = WorkStatus.COMPLETED
-      if (status === 'FAIL') status = WorkStatus.FAILED
-      
-      return {
-        id: work.id,
-        title: work.get('title') || t('profile.works.untitledWork'),
-        imageUrl: work.get('imageUrl') || '',
-        audioUrl: work.get('audioUrl') || '',
-        style: work.get('style') || '',
-        status: status,
-        progress: work.get('progress') || 0,
-        createdAt: work.createdAt,
-        user: work.get('user'),
-        error: work.get('error'),
-        taskId: work.get('taskId')
-      }
-    })
-
-    ElMessage.success(t('profile.works.refreshSuccess', { count: pendingWorks.length }))
-  } catch (error) {
-    console.error('Refresh error:', error)
-    ElMessage.error(t('profile.works.refreshError'))
-  } finally {
-    loadingStates.value.works = false
-  }
-}
-
 const handleWorkClick = (work) => {
   router.push({
     name: `${locale.value}-WorkDetail`,
@@ -515,6 +750,7 @@ watch(() => userStore.currentUser, (newUser) => {
   }
 }, { immediate: true })
 
+// 在组件挂载时执行
 onMounted(async () => {
   try {
     loading.value = true
@@ -533,6 +769,7 @@ onMounted(async () => {
       paymentResult.value = await handlePaymentSuccess(paymentType, amount)
     }
   } catch (error) {
+    console.error('Error in onMounted:', error)
   } finally {
     loading.value = false
   }
@@ -926,8 +1163,8 @@ const handleDeleteWork = async (work, event) => {
                 />
                 <div class="work-overlay">
                   <div class="work-status" :class="work.status.toLowerCase()">
-                    <el-icon v-if="work.status.toUpperCase() === WorkStatus.COMPLETED"><Check /></el-icon>
-                    <el-icon v-else-if="work.status.toUpperCase() === WorkStatus.GENERATING" class="rotating"><Loading /></el-icon>
+                    <el-icon v-if="work.status.toUpperCase() === 'COMPLETED'"><Check /></el-icon>
+                    <el-icon v-else-if="work.status.toUpperCase() === 'GENERATING'"><Loading /></el-icon>
                     <el-icon v-else><Warning /></el-icon>
                     {{ t(`profile.works.status.${work.status.toUpperCase()}`) }}
                   </div>
@@ -1396,8 +1633,8 @@ const handleDeleteWork = async (work, event) => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: rgba(var(--primary-color-rgb), 0.1);
-  border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 0.5rem;
   
   .badge-value {

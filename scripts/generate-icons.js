@@ -1,26 +1,25 @@
-import sharp from 'sharp';
-import { promises as fs } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const sharp = require('sharp');
+const fs = require('fs');
+const path = require('path');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ICONS_DIR = path.join(__dirname, '../public/icons');
+const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+const sourceIcon = path.join(__dirname, '../src/assets/icon-512x512.png');
+const outputDir = path.join(__dirname, '../public/icons');
 
-const sizes = [
-  16, 32, 70, 144, 150, 180, 192, 310, 512
-];
-
-async function generateIcons() {
-  const svgBuffer = await fs.readFile(path.join(ICONS_DIR, 'icon.svg'));
-  
-  for (const size of sizes) {
-    await sharp(svgBuffer)
-      .resize(size, size)
-      .png()
-      .toFile(path.join(ICONS_DIR, `icon-${size}x${size}.png`));
-    console.log(`Generated icon-${size}x${size}.png`);
-  }
+// 确保输出目录存在
+if (!fs.existsSync(outputDir)) {
+  fs.mkdirSync(outputDir, { recursive: true });
 }
 
-generateIcons().catch(console.error); 
+// 为每个尺寸生成图标
+sizes.forEach(size => {
+  sharp(sourceIcon)
+    .resize(size, size)
+    .toFile(path.join(outputDir, `icon-${size}x${size}.png`))
+    .then(info => {
+      console.log(`Generated ${size}x${size} icon`);
+    })
+    .catch(err => {
+      console.error(`Error generating ${size}x${size} icon:`, err);
+    });
+}); 

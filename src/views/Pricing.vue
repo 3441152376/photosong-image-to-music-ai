@@ -632,7 +632,7 @@ import { createCheckoutSession, PRICE_IDS } from '../services/payment'
 import { useUserStore } from '../stores/user'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, i18n } = useI18n()
 const isLoading = ref(false)
 const userStore = useUserStore()
 
@@ -651,14 +651,12 @@ const handleSubscribe = async (plan) => {
     isLoading.value = true
     const priceId = PRICE_IDS.memberships[plan]
     const { url } = await createCheckoutSession(priceId, {
-      userId: userStore.currentUser.id,
       planType: 'subscription',
       plan
     })
     window.location.href = url
   } catch (error) {
-    ElMessage.error(t('payment.error.checkout'))
-    console.error('Checkout error:', error)
+    handlePaymentError(error)
   } finally {
     isLoading.value = false
   }
@@ -680,23 +678,53 @@ const handlePurchase = async (pkg, index) => {
     const pointsType = ['small', 'medium', 'large'][index]
     const priceId = PRICE_IDS.points[pointsType]
     const { url } = await createCheckoutSession(priceId, {
-      userId: userStore.currentUser.id,
       planType: 'points',
       points: pkg.points
     })
     window.location.href = url
   } catch (error) {
-    ElMessage.error(t('payment.error.checkout'))
-    console.error('Points purchase error:', error)
+    handlePaymentError(error)
   } finally {
     isLoading.value = false
   }
 }
 
-const handleLoginClick = () => {
-  router.push({ 
-    name: `${locale.value}-Auth`,
-    query: { redirect: router.currentRoute.value.fullPath }
-  })
+// 处理支付错误
+const handlePaymentError = (error) => {
+  console.error('Payment error:', error)
+  if (error.response) {
+    switch (error.response.status) {
+      case 400:
+        ElMessage.error(t('payment.errors.invalidPrice'))
+        break
+      case 401:
+        ElMessage.error(t('payment.errors.unauthorized'))
+        break
+      case 500:
+        ElMessage.error(t('payment.errors.server'))
+        break
+      default:
+        ElMessage.error(t('payment.errors.default'))
+    }
+  } else {
+    ElMessage.error(t('payment.errors.network'))
+  }
+}
+
+// 处理登录点击
+const handleLoginClick = async () => {
+  try {
+    const currentLocale = i18n.global.locale.value // 获取当前语言
+    const result = await userStore.login()
+    if (result.success) {
+      ElMessage.success(t('login.success'))
+      router.push(`/${currentLocale}/create`)
+    } else {
+      ElMessage.error(result.message || t('login.failed'))
+    }
+  } catch (error) {
+    console.error('Login failed:', error)
+    ElMessage.error(t('login.failed'))
+  }
 }
 </script>    

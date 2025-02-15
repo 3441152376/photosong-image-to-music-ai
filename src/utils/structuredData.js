@@ -48,9 +48,14 @@ export const generateFAQSchema = (faqs) => ({
 
 // 生成评分和评论结构化数据
 export const generateRatingSchema = (work) => {
-  // 确保评分和评论数为正数
-  const ratingValue = parseFloat(work.averageRating) || 0
+  // 确保评分和评论数为正数且在有效范围内
+  const ratingValue = parseFloat(work.averageRating)
   const reviewCount = parseInt(work.reviewCount) || 0
+  
+  // 如果评分无效或评论数为0，则不返回评分数据
+  if (!ratingValue || isNaN(ratingValue) || reviewCount <= 0) {
+    return {}
+  }
   
   // 确保评分在 1-5 的范围内
   const normalizedRating = Math.min(Math.max(ratingValue, 1), 5)
@@ -59,15 +64,22 @@ export const generateRatingSchema = (work) => {
     '@context': 'https://schema.org',
     '@type': 'MusicComposition',
     'name': work.title,
-    'aggregateRating': reviewCount > 0 ? {
+    'aggregateRating': {
       '@type': 'AggregateRating',
       'ratingValue': normalizedRating.toFixed(1),
-      'reviewCount': Math.max(reviewCount, 0),
+      'reviewCount': reviewCount,
       'bestRating': '5',
       'worstRating': '1'
-    } : undefined,
+    },
     'review': (work.reviews || [])
-      .filter(review => review && review.rating >= 1 && review.rating <= 5)
+      .filter(review => {
+        const rating = parseFloat(review.rating)
+        return review && 
+               rating >= 1 && 
+               rating <= 5 && 
+               review.content && 
+               review.content.trim().length > 0
+      })
       .map(review => ({
         '@type': 'Review',
         'reviewRating': {
@@ -80,7 +92,7 @@ export const generateRatingSchema = (work) => {
           '@type': 'Person',
           'name': review.author?.username || 'Anonymous'
         },
-        'reviewBody': review.content || '',
+        'reviewBody': review.content.trim(),
         'datePublished': review.createdAt
       }))
   }

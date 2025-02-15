@@ -15,10 +15,13 @@ import { startWorkStatusChecker } from './utils/workStatusChecker'
 import { seoMiddleware } from './middleware/seo'
 import { prerenderMiddleware, updatePrerenderMiddleware } from './middleware/prerender'
 import { setupAudioContext } from './utils/audio'
+import { startScheduler } from './server/workStatusScheduler'
+import { prerenderService } from './services/prerenderService'
 
 // 创建Vue应用实例
 const vueApp = createApp(App)
 const head = createHead()
+const pinia = createPinia()
 
 // 注册所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
@@ -29,12 +32,20 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 vueApp.directive('lazy-load', lazyLoad)
 
 // 使用插件
-vueApp.use(createPinia())
+vueApp.use(pinia)
 vueApp.use(router)
 vueApp.use(ElementPlus)
 vueApp.use(i18n)
 vueApp.use(head)
 vueApp.use(seoMiddleware)
+
+// 设置路由实例
+prerenderService.setRouter(router)
+
+// 启动作品状态检查调度器
+if (import.meta.env.PROD) {  // 只在生产环境启动
+  startScheduler()
+}
 
 // 通过路由守卫实现预渲染功能
 router.beforeEach(async (to, from, next) => {
@@ -80,6 +91,11 @@ router.isReady().then(() => {
   
   // 设置 HTML lang 属性
   document.querySelector('html').setAttribute('lang', i18n.global.locale.value)
+  
+  // 初始化预渲染服务
+  prerenderService.initialize().catch(error => {
+    console.error('Failed to initialize prerender service:', error)
+  })
   
   // 挂载应用
   vueApp.mount('#app')

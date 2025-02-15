@@ -2,7 +2,28 @@ import AV from 'leancloud-storage'
 import { supportedLocales } from '../i18n'
 
 // 添加域名常量
-const SITE_DOMAIN = 'https://photosong.com'
+const SITE_DOMAIN = import.meta.env.VITE_APP_DOMAIN || 'https://photosong.com'
+
+// 添加环境配置检查
+const getSiteDomain = () => {
+  const env = import.meta.env.MODE
+  const domain = import.meta.env.VITE_APP_DOMAIN
+
+  if (!domain) {
+    console.warn('VITE_APP_DOMAIN not set, using default domain')
+    return 'https://photosong.com'
+  }
+
+  // 确保域名格式正确
+  if (!domain.startsWith('http')) {
+    return `https://${domain}`
+  }
+
+  return domain
+}
+
+// 更新域名常量
+const DOMAIN = getSiteDomain()
 
 /**
  * 生成作品站点地图
@@ -24,7 +45,7 @@ export const generateWorksSitemap = async () => {
       // 为每个语言版本生成 URL
       supportedLocales.forEach(locale => {
         urls.push({
-          loc: `${SITE_DOMAIN}/${locale}${path}`,
+          loc: `${DOMAIN}/${locale}${path}`,
           lastmod,
           changefreq: 'weekly',
           priority: 0.7,
@@ -32,12 +53,12 @@ export const generateWorksSitemap = async () => {
             // 添加 x-default
             {
               hreflang: 'x-default',
-              href: `${SITE_DOMAIN}${path}`
+              href: `${DOMAIN}${path}`
             },
             // 添加所有语言版本
             ...supportedLocales.map(altLocale => ({
               hreflang: altLocale,
-              href: `${SITE_DOMAIN}/${altLocale}${path}`
+              href: `${DOMAIN}/${altLocale}${path}`
             }))
           ]
         })

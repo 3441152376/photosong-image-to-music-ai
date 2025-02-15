@@ -100,6 +100,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import AV from 'leancloud-storage'
+import { prerenderService } from '../services/prerenderService'
 
 // 响应式状态
 const { t } = useI18n()
@@ -161,36 +162,49 @@ const updateProgress = (type, count) => {
   progressPercentage.value = Math.min(Math.round(totalProgress / itemCount), 100)
 }
 
-// 获取作品和用户函数
-const getAllWorksAndUserIds = async ({ skip = 0, limit = 100 } = {}) => {
+// 获取所有作品和用户函数
+const getAllWorksAndUserIds = async () => {
   try {
-    console.log('查询作品:', { skip, limit })
-    const query = new AV.Query('Work')
-    query.include('user')
-    query.equalTo('status', 'completed')
-    query.descending('createdAt')
-    query.limit(limit)
-    query.skip(skip)
+    const allWorks = []
+    const userIds = new Set()
+    let skip = 0
+    const limit = 100
+    let hasMore = true
     
-    // 获取作品列表
-    const works = await query.find()
-  const userIds = new Set()
-    
-    // 提取用户ID
-    works.forEach(work => {
-      const user = work.get('user')
-      if (user) {
-        userIds.add(user.id)
+    while (hasMore) {
+      console.log('查询作品:', { skip, limit })
+      const query = new AV.Query('Work')
+      query.include('user')
+      query.equalTo('status', 'completed')
+      query.descending('createdAt')
+      query.limit(limit)
+      query.skip(skip)
+      
+      const works = await query.find()
+      if (works.length === 0) {
+        hasMore = false
+        break
       }
-    })
+      
+      // 提取用户ID
+      works.forEach(work => {
+        const user = work.get('user')
+        if (user) {
+          userIds.add(user.id)
+        }
+      })
+      
+      allWorks.push(...works)
+      skip += limit
+      
+      // 更新进度
+      updateProgress('works', allWorks.length)
+      updateProgress('users', userIds.size)
+    }
     
-    // 更新进度
-    updateProgress('works', works.length)
-    updateProgress('users', userIds.size)
-  
-  console.log('总共获取到', works.length, '个作品，', userIds.size, '个用户')
+    console.log('总共获取到', allWorks.length, '个作品，', userIds.size, '个用户')
     return {
-      works: works.map(work => ({
+      works: allWorks.map(work => ({
         id: work.id,
         title: work.get('title'),
         imageUrl: work.get('imageUrl'),
@@ -199,32 +213,44 @@ const getAllWorksAndUserIds = async ({ skip = 0, limit = 100 } = {}) => {
       })),
       users: Array.from(userIds)
     }
-    } catch (error) {
+  } catch (error) {
     console.error('获取作品失败:', error)
-      throw error
-    }
+    throw error
   }
-  
-// 获取文章函数
-const getAllArticles = async ({ skip = 0, limit = 100 } = {}) => {
+}
+
+// 获取所有文章函数
+const getAllArticles = async () => {
   try {
-    console.log('查询文章:', { skip, limit })
-    const query = new AV.Query('Article')
-    query.equalTo('status', 'published')
-    query.include('author')
-    query.descending('createdAt')
-    query.limit(limit)
-    query.skip(skip)
+    const allArticles = []
+    let skip = 0
+    const limit = 100
+    let hasMore = true
     
-    // 获取文章列表
-    const articles = await query.find()
-    
-    // 更新进度
-    updateProgress('articles', articles.length)
+    while (hasMore) {
+      console.log('查询文章:', { skip, limit })
+      const query = new AV.Query('Article')
+      query.equalTo('status', 'published')
+      query.include('author')
+      query.descending('createdAt')
+      query.limit(limit)
+      query.skip(skip)
+      
+      const articles = await query.find()
+      if (articles.length === 0) {
+        hasMore = false
+        break
+      }
+      
+      allArticles.push(...articles)
+      skip += limit
+      
+      // 更新进度
+      updateProgress('articles', allArticles.length)
+    }
     
     return {
-      articles: articles.map(article => {
-        // 将整个文章对象转换为普通的JavaScript对象
+      articles: allArticles.map(article => {
         const articleData = article.toJSON()
         return {
           id: articleData.objectId,
@@ -245,8 +271,9 @@ const getAllArticles = async ({ skip = 0, limit = 100 } = {}) => {
   }
 }
 
-// 添加静态页面路由配置
+// 扩展静态页面列表
 const staticPages = [
+  // 核心页面
   'home',
   'create',
   'community',
@@ -256,14 +283,60 @@ const staticPages = [
   'privacy',
   'terms',
   'disclaimer',
-  'tutorial'
+  'tutorial',
+  
+  // 功能页面
+  'ai-music-generator',
+  'photo-to-music',
+  'image-to-music',
+  'ai-music-creator',
+  'ai-beat-maker',
+  
+  // 分类页面
+  'articles/category/news',
+  'articles/category/tutorials',
+  'articles/category/ai_music',
+  'articles/category/knowledge',
+  'articles/category/professional',
+  
+  // 其他重要页面
+  'about',
+  'features',
+  'help',
+  'support',
+  'license'
 ]
 
 // 支持的语言列表
 const supportedLanguages = ['zh', 'en', 'ru']
 
 // 添加域名常量
-const SITE_DOMAIN = 'https://photosong.com'
+const SITE_DOMAIN = import.meta.env.VITE_APP_DOMAIN || 'https://photosong.com'
+
+// 获取域名函数
+const getSiteDomain = () => {
+  const domain = import.meta.env.VITE_APP_DOMAIN
+
+  if (!domain) {
+    console.warn('VITE_APP_DOMAIN not set, using default domain')
+    return 'https://photosong.com'
+  }
+
+  // 确保域名格式正确
+  if (!domain.startsWith('http')) {
+    return `https://${domain}`
+  }
+
+  return domain
+}
+
+// 更新域名常量
+const DOMAIN = getSiteDomain()
+
+// 调试信息
+if (import.meta.env.DEV) {
+  console.log('Current domain:', DOMAIN)
+}
 
 // 获取所有URL的函数
 const getAllUrls = (worksData, articlesData) => {
@@ -272,7 +345,7 @@ const getAllUrls = (worksData, articlesData) => {
   // 添加静态页面URL
   staticPages.forEach(page => {
     supportedLanguages.forEach(lang => {
-      urls.add(`${SITE_DOMAIN}/${lang}/${page}`)
+      urls.add(`${DOMAIN}/${lang}/${page}`)
     })
   })
 
@@ -280,7 +353,7 @@ const getAllUrls = (worksData, articlesData) => {
   if (worksData?.works) {
     worksData.works.forEach(work => {
       supportedLanguages.forEach(lang => {
-        urls.add(`${SITE_DOMAIN}/${lang}/work/${work.id}`)
+        urls.add(`${DOMAIN}/${lang}/work/${work.id}`)
       })
     })
   }
@@ -289,7 +362,7 @@ const getAllUrls = (worksData, articlesData) => {
   if (worksData?.users) {
     worksData.users.forEach(userId => {
       supportedLanguages.forEach(lang => {
-        urls.add(`${SITE_DOMAIN}/${lang}/user/${userId}`)
+        urls.add(`${DOMAIN}/${lang}/user/${userId}`)
       })
     })
   }
@@ -298,7 +371,7 @@ const getAllUrls = (worksData, articlesData) => {
   if (articlesData?.articles) {
     articlesData.articles.forEach(article => {
       supportedLanguages.forEach(lang => {
-        urls.add(`${SITE_DOMAIN}/${lang}/article/${article.slug || article.id}`)
+        urls.add(`${DOMAIN}/${lang}/article/${article.slug || article.id}`)
       })
     })
   }
@@ -329,8 +402,8 @@ const generateSitemapXml = (urls) => {
 const handleUpdate = async () => {
   if (loading.value) return
   
-    loading.value = true
-    error.value = null
+  loading.value = true
+  error.value = null
   progress.value = {
     users: 0,
     works: 0,
@@ -340,6 +413,9 @@ const handleUpdate = async () => {
   progressPercentage.value = 0
   
   try {
+    // 重置性能监控
+    prerenderService.resetMonitor()
+    
     // 获取所有数据
     const [worksData, articlesData] = await Promise.all([
       getAllWorksAndUserIds(),
@@ -367,6 +443,10 @@ const handleUpdate = async () => {
     await status.save()
     lastUpdate.value = new Date()
     
+    // 获取性能报告
+    const performanceReport = prerenderService.getPerformanceReport()
+    console.log('Performance Report:', performanceReport)
+    
     ElMessage.success(t('sitemap.status.success'))
   } catch (err) {
     console.error('站点地图更新失败:', err)
@@ -374,25 +454,61 @@ const handleUpdate = async () => {
     ElMessage.error(t('sitemap.errors.updateFailed'))
   } finally {
     loading.value = false
+    // 清理过期缓存
+    prerenderService.cleanupCache()
   }
 }
+
+// 修改组件挂载时获取初始数据
+onMounted(async () => {
+  try {
+    // 获取最新的站点地图状态
+    const query = new AV.Query('SitemapStatus')
+    query.descending('createdAt')
+    query.limit(1)
+    const status = await query.first()
+    
+    if (status) {
+      lastUpdate.value = status.get('lastUpdate')
+      totalUrls.value = status.get('totalUrls') || 0
+      
+      // 重新获取并计算所有URL
+      const [worksData, articlesData] = await Promise.all([
+        getAllWorksAndUserIds(),
+        getAllArticles()
+      ])
+      
+      const urls = getAllUrls(worksData, articlesData)
+      totalUrls.value = urls.length
+      
+      // 更新进度信息
+      progress.value = {
+        users: worksData.users.length,
+        works: worksData.works.length,
+        articles: articlesData.articles.length,
+        urls: urls.length
+      }
+    }
+  } catch (err) {
+    console.error('获取站点地图状态失败:', err)
+    error.value = t('sitemap.errors.loadFailed')
+  }
+})
 
 // 修改下载处理函数
 const handleDownloadSitemap = async () => {
   try {
-    const query = new AV.Query('SitemapStatus')
-    const status = await query.first()
+    // 重新获取所有数据以确保最新状态
+    const [worksData, articlesData] = await Promise.all([
+      getAllWorksAndUserIds(),
+      getAllArticles()
+    ])
     
-    if (!status) {
-      ElMessage.warning(t('sitemap.errors.noSitemap'))
-      return
-    }
+    // 生成最新的URL列表
+    const urls = getAllUrls(worksData, articlesData)
     
-    const sitemapXml = status.get('sitemapXml')
-    if (!sitemapXml) {
-      ElMessage.warning(t('sitemap.errors.noSitemap'))
-      return
-    }
+    // 生成最新的sitemap XML
+    const sitemapXml = generateSitemapXml(urls)
     
     // 创建Blob并下载
     const blob = new Blob([sitemapXml], { type: 'application/xml' })
@@ -404,6 +520,9 @@ const handleDownloadSitemap = async () => {
     a.click()
     window.URL.revokeObjectURL(url)
     document.body.removeChild(a)
+    
+    // 更新显示的URL总数
+    totalUrls.value = urls.length
     
     ElMessage.success(t('sitemap.download.success'))
   } catch (err) {
@@ -422,21 +541,6 @@ const formatDate = (date) => {
   if (!date) return ''
   return new Date(date).toLocaleString()
 }
-
-// 组件挂载时获取初始数据
-onMounted(async () => {
-  try {
-    // 获取上次更新时间
-    const query = new AV.Query('SitemapStatus')
-    const status = await query.first()
-    if (status) {
-      lastUpdate.value = status.get('lastUpdate')
-      totalUrls.value = status.get('totalUrls') || 0
-    }
-  } catch (err) {
-    console.error('获取站点地图状态失败:', err)
-  }
-})
 </script>
 
 <style scoped>

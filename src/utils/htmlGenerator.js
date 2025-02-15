@@ -4,7 +4,17 @@ import { joinPaths, normalizePath } from './pathUtils.js'
 /**
  * 生成静态 HTML
  */
-export function generateHTML({ title, description, locale, content = '', path = '/', url = 'https://photosong.com' }) {
+export function generateHTML({ 
+  title, 
+  description, 
+  keywords = '',
+  locale, 
+  content = '', 
+  path = '/', 
+  url = 'https://photosong.com',
+  structuredData = null,
+  alternateLinks = {}
+}) {
   return `
 <!DOCTYPE html>
 <html lang="${locale}">
@@ -15,6 +25,7 @@ export function generateHTML({ title, description, locale, content = '', path = 
     <!-- Primary Meta Tags -->
     <title>${title}</title>
     <meta name="description" content="${description}">
+    <meta name="keywords" content="${keywords}">
     
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="${title}">
@@ -24,10 +35,15 @@ export function generateHTML({ title, description, locale, content = '', path = 
     <meta property="og:locale" content="${locale === 'zh' ? 'zh_CN' : locale === 'en' ? 'en_US' : 'ru_RU'}">
     
     <!-- Language Alternates -->
-    <link rel="alternate" hreflang="zh" href="https://photosong.com/zh${path}">
-    <link rel="alternate" hreflang="en" href="https://photosong.com/en${path}">
-    <link rel="alternate" hreflang="ru" href="https://photosong.com/ru${path}">
+    ${Object.entries(alternateLinks)
+      .map(([lang, href]) => `<link rel="alternate" hreflang="${lang}" href="${href}">`)
+      .join('\n    ')}
     <link rel="canonical" href="${url}">
+    
+    <!-- Structured Data -->
+    ${structuredData ? `<script type="application/ld+json">
+      ${JSON.stringify(structuredData, null, 2)}
+    </script>` : ''}
     
     <!-- Content Security Policy -->
     <meta http-equiv="Content-Security-Policy" content="

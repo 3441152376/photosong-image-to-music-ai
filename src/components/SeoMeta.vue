@@ -52,6 +52,10 @@ const props = defineProps({
   content: {
     type: String,
     default: ''
+  },
+  canonicalUrl: {
+    type: String,
+    default: ''
   }
 })
 
@@ -403,10 +407,23 @@ const localizedDescription = computed(() => {
   return props.description || (props.type === 'article' ? descriptions.article : descriptions.default)
 })
 
-// 规范的 URL
-const canonicalUrl = computed(() => {
-  const baseUrl = 'https://photosong.com' // 替换为实际的域名
-  return `${baseUrl}${route.path}`
+// 生成规范URL
+const getCanonicalUrl = computed(() => {
+  if (props.canonicalUrl) {
+    return props.canonicalUrl
+  }
+  
+  // 移除查询参数和hash
+  const path = route.path
+  const baseUrl = 'https://photosong.com'
+  
+  // 处理多语言URL
+  const langPrefix = locale.value === 'en' ? '' : `/${locale.value}`
+  
+  // 处理尾部斜杠
+  const normalizedPath = path.endsWith('/') ? path : `${path}/`
+  
+  return `${baseUrl}${langPrefix}${normalizedPath}`
 })
 
 // 增强多语言支持
@@ -460,7 +477,7 @@ const jsonLd = computed(() => {
     isAccessibleForFree: true,
     potentialAction: {
       '@type': 'UseAction',
-      target: canonicalUrl.value
+      target: getCanonicalUrl.value
     },
     // 添加更多结构化数据
     offers: {
@@ -487,7 +504,7 @@ const jsonLd = computed(() => {
       keywords: mergedKeywords.value,
       mainEntityOfPage: {
         '@type': 'WebPage',
-        '@id': canonicalUrl.value
+        '@id': getCanonicalUrl.value
       },
       articleBody: props.content,
       wordCount: props.content ? props.content.split(/\s+/).length : 0,
@@ -593,7 +610,7 @@ useHead({
     },
     {
       property: 'og:url',
-      content: canonicalUrl.value
+      content: getCanonicalUrl.value
     },
     {
       property: 'og:type',
@@ -823,7 +840,7 @@ useHead({
   link: [
     {
       rel: 'canonical',
-      href: canonicalUrl.value
+      href: getCanonicalUrl.value
     },
     // 添加语言替代链接
     ...languageAlternates.value.map(({ hreflang, href }) => ({
