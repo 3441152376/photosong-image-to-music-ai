@@ -16,16 +16,16 @@ PhotoSongAI 是一个创新的 AI 驱动的图片转音乐平台，能够将图�
 
 - Vue 3 + Vite
 - Element Plus
-- TailwindCSS
 - LeanCloud
-- WebAudio API
+- GPT-4 Vision API
+- Suno AI API
 - PWA 支持
 
 ## 开始使用
 
 1. 克隆项目
 ```bash
-git clone https://github.com/yourusername/photosong-ai.git
+git clone https://github.com/你的用户名/photosong-ai.git
 cd photosong-ai
 ```
 
@@ -101,8 +101,7 @@ src/
 
 ## 联系我们
 
-- 网站：[https://photosong.com](https://photosong.com)
-- 邮箱：support@photosong.com
+- 邮箱：你的邮箱地址
 
 ## 致谢
 

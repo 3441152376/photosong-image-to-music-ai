@@ -34,14 +34,14 @@ export async function analyzeImageWithVision(imageBase64) {
         'Authorization': `Bearer ${VISION_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4-vision-preview",
+        model: "gpt-4o",
         messages: [
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Please analyze this image and provide a detailed description for music generation. Include: 1. The mood and emotions 2. Visual elements and scenes 3. Suggested music style and genre 4. Any specific instruments that would match the image. Format the response as a JSON with keys: title, tags (comma separated), prompt (detailed description), negative_tags (what to avoid)"
+                text: "请根据这张图片创建一个详细的音乐创作描述。无论图片内容是否清晰、是否能识别出具体内容，都请发挥想象力，基于图片的色彩、氛围、抽象元素等进行创作。禁止回复'无法识别'或'无法帮助'等内容。\n\n请返回一个JSON，包含以下字段：\n- title: 推荐的音乐标题\n- tags: 音乐关键词（逗号分隔）\n- prompt: 详细的音乐描述（描述这张图片应该配什么样的音乐，包括氛围、风格、情绪等，可以包含一些歌词灵感）\n- negative_tags: 应避免的元素\n\n如果图片内容不清晰，可以完全基于色彩、光影、抽象感受进行创意描述。"
               },
               {
                 type: "image_url",
@@ -52,7 +52,7 @@ export async function analyzeImageWithVision(imageBase64) {
             ]
           }
         ],
-        max_tokens: 1000
+        max_tokens: 1500
       })
     })
 

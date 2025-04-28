@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Upload, Edit, Check, Warning } from '@element-plus/icons-vue'
+import { Upload, Edit, Check, Warning, Coin } from '@element-plus/icons-vue'
 import TheNavbar from '../components/TheNavbar.vue'
 import AV from 'leancloud-storage'
 import { analyzeImageWithVision, generateMusic, checkMusicTask } from '../utils/ai'
@@ -41,6 +41,8 @@ const checkInterval = ref(null)
 const lyrics = ref('')
 const isEditingLyrics = ref(false)
 const userPoints = ref(0)
+const isStreamingLyrics = ref(false) // 新增：是否正在流式生成歌词
+const lyricsProgressDots = ref('') // 新增：用于显示进度的动画点
 
 // 添加缺失的响应式变量
 const generationStatus = ref('PROCESSING') // 可能的值: 'PROCESSING', 'COMPLETED', 'FAILED'
@@ -242,6 +244,25 @@ const handleImageUpload = async (file) => {
   // 检查文件大小（25MB）
   if (rawFile.size > 25 * 1024 * 1024) {
     ElMessage.warning(t('create.upload.maxSize'))
+    return
+  }
+
+  // 检查用户是否已登录
+  const currentUser = AV.User.current()
+  if (!currentUser) {
+    ElMessage({
+      type: 'warning',
+      message: t('auth.loginPrompt.description'),
+      duration: 5000,
+      showClose: true
+    })
+    // 保存当前路径，登录后可以重定向回来
+    localStorage.setItem('redirectPath', router.currentRoute.value.fullPath)
+    // 跳转到登录页
+    router.push({
+      path: '/auth',
+      query: { redirect: router.currentRoute.value.fullPath, message: 'login_required' }
+    })
     return
   }
 
@@ -593,6 +614,16 @@ const generateLyrics = async () => {
   try {
     loading.value = true
     currentStep.value = 3
+    
+    // 清空之前的歌词
+    lyrics.value = ''
+    // 设置流式生成状态
+    isStreamingLyrics.value = true
+    
+    // 启动进度动画
+    const progressInterval = setInterval(() => {
+      lyricsProgressDots.value = (lyricsProgressDots.value + '.').replace(/\.{4}$/, '.')
+    }, 500)
 
     // 添加终端提示
     ElMessage({
@@ -603,52 +634,49 @@ const generateLyrics = async () => {
       customClass: 'generating-message'
     })
 
-    // 构建更详细的提示词
+    // 构建更精确的提示词
     const prompt = {
-      role: "user",
-      content: [
-        {
-          type: "text",
-          text: `作为一位专业的作词人，请根据这张图片创作一首歌词。要求：
+      role: "system",
+      content: `你是一位专业的作词人。请根据我提供的图片创作一首歌词。
 
-1. 歌词语言：${selectedLanguages.value.join('、')}
-2. 音乐风格：${selectedStyle.value}
-3. 歌词长度：${selectedLength.value === 'short' ? '简短（2-3段）' : selectedLength.value === 'medium' ? '中等（3-4段）' : '较长（4-5段）'}
-4. 与图片的相关度：${selectedRelevance.value === 'low' ? '低（可以有较多发挥空间）' : selectedRelevance.value === 'medium' ? '中等（部分基于图片内容）' : '高（紧密贴合图片内容）'}
+严格遵循以下要求：
+1. 只输出歌词内容，不要有任何其他解释、说明或回复
+2. 使用指定语言：${selectedLanguages.value.join('、')}
+3. 按照${selectedStyle.value}音乐风格的特点创作
+4. 歌词长度：${selectedLength.value === 'short' ? '2-3段' : selectedLength.value === 'medium' ? '3-4段' : '4-5段'}
+5. 与图片的关联度：${selectedRelevance.value === 'low' ? '低（可以发挥想象）' : selectedRelevance.value === 'medium' ? '中等（部分基于图片）' : '高（严格紧密贴合图片）'}
 
 创作要求：
-1. 主题和情感：
-   - 深入分析图片中的视觉元素、场景、氛围
-   - 捕捉并表达图片中的情感和故事
-   - 创造鲜明的意象和比喻
+1. 结构完整：包含前奏、主歌、副歌、桥段、尾声等完整结构
+2. 押韵工整：注重音韵和节奏感
+3. 情感真挚：表达自然，意境优美
+4. 朗朗上口：便于演唱和记忆、但是要避免口水化歌词
+5. 不要包含任何前言、说明或注释，歌词要符合 suno ai 的创作格式要求
+6. 即使图片内容不清晰或无法识别，也必须创作一首完整歌词
+7. 禁止回复任何形式的"无法识别"、"请重新上传"或"图片存在问题"等提示
+8. 如果识别困难，请基于图片的色彩、构图或任何可见元素进行创意发挥
 
-2. 结构和形式：
-   - 清晰的歌曲结构（主歌、副歌、间奏、尾奏、乐器独奏演奏等，要符合选定音乐风格的节奏感）
-   - 注重押韵和音乐性
-   - 符合选定音乐风格的节奏感
-
-3. 创作指导：
-   - 即使图片信息有限，也要发挥创意想象
-   - 可以从图片的细节延伸出更丰富的故事
-   - 结合所选风格的特点进行创作
-
-4. 质量要求：
-   - 歌词要朗朗上口
-   - 意境要优美动人
-   - 情感要真挚自然
-   - 用词要精准贴切
-
-请根据以上要求，创作一首完整的歌词。即使图片信息看起来有限，也请发挥创意，创作出富有感染力的作品。`
-        },
-        {
-          type: "image_url",
-          image_url: {
-            url: imageUrl.value
-          }
-        }
-      ]
+直接输出歌词，不要包含任何前言、说明或注释。`
     }
 
+    const messages = [
+      prompt,
+      {
+        role: "user",
+        content: `作为一位专业作词人，请为我创作一首全新的高质量歌词：
+
+1. 风格要求：严格遵循${selectedStyle.value}音乐风格特点
+2. 结构完整：包含主歌、副歌、桥段等完整结构 
+3. 诗意优美：使用生动、形象、富有意境的词语
+4. 韵律出色：注重韵脚和节奏感，使歌词朗朗上口
+5. 情感丰富：表达深刻、打动人心的情感
+6. 主题创新：创作富有独特性和创意的主题
+
+请直接输出创作的完整歌词，不要包含任何解释和前言。`
+      }
+    ]
+
+    // 使用流式API
     const response = await fetch('https://api.whatai.cc/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -657,34 +685,95 @@ const generateLyrics = async () => {
       },
       body: JSON.stringify({
         model: "gpt-4o",
-        messages: [prompt],
+        messages: messages,
         max_tokens: 1000,
-        temperature: 0.8
+        temperature: 0.8,
+        stream: true // 启用流式输出
       })
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      console.error('OpenAI API error:', errorData)
-      throw new Error('生成歌词失败')
+      // 尝试解析错误响应
+      try {
+        const errorData = await response.json()
+        console.error('OpenAI API error:', errorData)
+        throw new Error(errorData.error?.message || '生成歌词失败')
+      } catch (e) {
+        // 如果错误响应无法解析为JSON
+        throw new Error(`生成歌词失败 (${response.status}: ${response.statusText})`)
+      }
     }
 
-    const data = await response.json()
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error('无效的API响应')
+    // 处理流式响应
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+    let buffer = ''
+    
+    // 设置超时控制
+    let lastDataTime = Date.now()
+    const MAX_SILENCE_DURATION = 30000 // 30秒无数据视为超时
+    
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        // 更新最后接收数据的时间
+        lastDataTime = Date.now()
+        
+        // 解码本次收到的数据
+        const chunk = decoder.decode(value, { stream: true })
+        buffer += chunk
+        
+        // 处理并解析接收到的数据
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // 最后一行可能不完整，放回buffer
+        
+        for (const line of lines) {
+          if (line.trim() === '') continue
+          if (line.trim() === 'data: [DONE]') continue
+          
+          try {
+            const jsonData = JSON.parse(line.replace(/^data: /, ''))
+            if (jsonData.choices && jsonData.choices[0].delta && jsonData.choices[0].delta.content) {
+              // 增量添加内容到歌词
+              lyrics.value += jsonData.choices[0].delta.content
+            }
+          } catch (e) {
+            console.warn('Failed to parse stream line:', line, e)
+          }
+        }
+        
+        // 检查是否超时
+        if (Date.now() - lastDataTime > MAX_SILENCE_DURATION) {
+          throw new Error('生成歌词超时，请重试')
+        }
+      }
+    } catch (streamError) {
+      console.error('Stream processing error:', streamError)
+      // 如果已经获取了部分歌词，但流处理中断，可以继续使用已生成的部分
+      if (!lyrics.value || lyrics.value.length < 10) {
+        throw streamError // 如果几乎没有内容，则抛出错误
+      }
+      // 否则添加提示信息
+      lyrics.value += '\n\n[注: 生成过程中断，这是部分结果]'
+    } finally {
+      // 清除进度动画
+      clearInterval(progressInterval)
+      isStreamingLyrics.value = false
+      lyricsProgressDots.value = ''
     }
-
-    lyrics.value = data.choices[0].message.content.trim()
     
     // 关闭所有消息提示
     ElMessage.closeAll()
     ElMessage.success('歌词生成成功')
-    
   } catch (error) {
-    // 关闭所有消息提示
     ElMessage.closeAll()
     console.error('Generate lyrics failed:', error)
     ElMessage.error(error.message || '生成歌词失败')
+    // 确保流式状态被重置
+    isStreamingLyrics.value = false
+    lyricsProgressDots.value = ''
   } finally {
     loading.value = false
   }
@@ -692,11 +781,6 @@ const generateLyrics = async () => {
 
 // 修改优化歌词的函数
 const optimizeLyrics = async () => {
-  if (!lyrics.value) {
-    ElMessage.warning('请先生成歌词')
-    return
-  }
-  
   try {
     loading.value = true
     
@@ -711,23 +795,32 @@ const optimizeLyrics = async () => {
         messages: [
           {
             role: "user",
-            content: `请优化以下歌词，使其更加优美、押韵，但要符合原本的含义，同时保持${selectedStyle.value}风格：\n\n${lyrics.value}`
+            content: `作为一位专业作词人，请为我创作一首全新的高质量歌词：
+
+1. 风格要求：严格遵循${selectedStyle.value}音乐风格特点
+2. 结构完整：包含主歌、副歌、桥段等完整结构 
+3. 诗意优美：使用生动、形象、富有意境的词语
+4. 韵律出色：注重韵脚和节奏感，使歌词朗朗上口
+5. 情感丰富：表达深刻、打动人心的情感
+6. 主题创新：创作富有独特性和创意的主题
+
+请直接输出创作的完整歌词，不要包含任何解释和前言。`
           }
         ]
       })
     })
 
     if (!response.ok) {
-      throw new Error('歌词优化失败')
+      throw new Error('歌词创作失败')
     }
 
     const data = await response.json()
     lyrics.value = data.choices[0].message.content
     
-    ElMessage.success('歌词优化成功')
+    ElMessage.success('创作新歌词成功')
   } catch (error) {
-    console.error('Lyrics optimization failed:', error)
-    ElMessage.error(error.message || '歌词优化失败')
+    console.error('Lyrics creation failed:', error)
+    ElMessage.error(error.message || '歌词创作失败')
   } finally {
     loading.value = false
   }
@@ -1083,7 +1176,7 @@ const triggerTimeEasterEgg = () => {
           </div>
           <div class="header-right">
             <div class="points-info">
-              <el-icon><Star /></el-icon>
+              <el-icon class="points-icon"><Coin /></el-icon>
               <span class="points-value">{{ userPoints }}</span>
               <span class="points-label">{{ t('create.points.label') }}</span>
               <el-button
@@ -1101,18 +1194,19 @@ const triggerTimeEasterEgg = () => {
 
         <!-- 创作提示 -->
         <div class="creation-notice" v-if="currentStep === 1">
-          <el-alert
-            type="warning"
-            :closable="false"
-            show-icon
-          >
-            <template #title>
-              {{ t('create.notice.title') }}
-            </template>
-            <template #default>
-              <p v-for="(tip, index) in $tm('create.notice.tips')" :key="index">{{ tip }}</p>
-            </template>
-          </el-alert>
+          <el-collapse>
+            <el-collapse-item>
+              <template #title>
+                <div class="notice-header">
+                  <el-icon><Warning /></el-icon>
+                  <span>{{ t('create.notice.title') }}</span>
+                </div>
+              </template>
+              <div class="notice-content">
+                <p v-for="(tip, index) in $tm('create.notice.tips')" :key="index">{{ tip }}</p>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
         </div>
 
         <div class="create-content">
@@ -1336,7 +1430,11 @@ const triggerTimeEasterEgg = () => {
                 class="lyrics-editor glass-input"
               />
               <div v-else class="lyrics-preview">
-                <pre>{{ lyrics }}</pre>
+                <div v-if="isStreamingLyrics" class="streaming-indicator">
+                  <span class="streaming-text">{{ t('create.generating.lyrics') }}</span>
+                  <span class="streaming-dots">{{ lyricsProgressDots }}</span>
+                </div>
+                <pre :class="{ 'streaming': isStreamingLyrics }">{{ lyrics }}</pre>
               </div>
             </div>
             
@@ -1899,9 +1997,10 @@ const triggerTimeEasterEgg = () => {
     align-items: center;
     gap: 0.5rem;
     
-    .el-icon {
-      color: var(--primary-color);
+    .points-icon {
+      color: var(--accent-color);
       font-size: 1.25rem;
+      filter: drop-shadow(0 0 2px rgba(var(--accent-color-rgb), 0.5));
     }
     
     .points-value {
@@ -1970,9 +2069,10 @@ const triggerTimeEasterEgg = () => {
       border-radius: 2rem;
       border: 1px solid rgba(255, 255, 255, 0.1);
       
-      .el-icon {
-        color: var(--primary-color);
+      .points-icon {
+        color: var(--accent-color);
         font-size: 1.25rem;
+        filter: drop-shadow(0 0 2px rgba(var(--accent-color-rgb), 0.5));
       }
       
       .points-value {
@@ -2003,27 +2103,52 @@ const triggerTimeEasterEgg = () => {
 }
 
 .creation-notice {
-  margin-bottom: 2rem;
-
-  :deep(.el-alert) {
-    background: var(--glass-background);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1.5rem;
+  
+  :deep(.el-collapse) {
+    background: transparent;
+    border: none;
     
-    .el-alert__title {
-      font-size: 1rem;
-      font-weight: 600;
+    .el-collapse-item__header {
+      background: var(--glass-background);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      color: var(--warning-color);
+      height: auto;
+      
+      &.is-active {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+      }
     }
     
-    p {
-      margin: 0.25rem 0;
-      color: var(--text-color);
+    .el-collapse-item__wrap {
+      background: var(--glass-background);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-top: none;
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
+    }
+    
+    .el-collapse-item__content {
+      padding: 0.75rem 1rem;
     }
   }
-}
-
-// 移除旧的积分显示样式
-.points-display {
-  display: none;
+  
+  .notice-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  
+  .notice-content p {
+    margin: 0.25rem 0;
+    color: var(--text-color);
+    font-size: 0.9rem;
+  }
 }
 
 .mode-description {
@@ -2175,12 +2300,43 @@ const triggerTimeEasterEgg = () => {
       color: var(--text-color);
       max-width: 100%;
       overflow-x: auto;
+      position: relative; /* 添加定位以支持流式生成指示器 */
+
+      .streaming-indicator {
+        position: sticky;
+        top: 0;
+        background: rgba(var(--primary-color-rgb), 0.1);
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        color: var(--primary-color);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+        
+        .streaming-text {
+          margin-right: 0.5rem;
+        }
+        
+        .streaming-dots {
+          min-width: 2rem;
+          text-align: left;
+        }
+      }
 
       pre {
         white-space: pre-wrap;
         word-wrap: break-word;
         overflow-wrap: break-word;
         margin: 0;
+        
+        &.streaming {
+          border-left: 3px solid var(--primary-color);
+          padding-left: 1rem;
+          animation: pulse 1.5s infinite alternate;
+        }
       }
     }
   }
@@ -2416,6 +2572,18 @@ const triggerTimeEasterEgg = () => {
       width: 6px;
       height: 30px;
     }
+  }
+}
+
+/* 添加流式生成的动画 */
+@keyframes pulse {
+  0% {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px rgba(var(--primary-color-rgb), 0.2);
+  }
+  100% {
+    border-color: rgba(var(--primary-color-rgb), 0.5);
+    box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.5);
   }
 }
 </style>

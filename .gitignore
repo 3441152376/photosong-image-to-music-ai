@@ -91,3 +91,12 @@ Thumbs.db
 
 # Cache files
 .cache/
+
+# Additional ignores
+.vite-ssg-temp/
+dev-dist/
+**/timestamp-*.mjs
+**/dist/workbox-*.js
+**/.DS_Store
+**/__pycache__/
+**/temp/
