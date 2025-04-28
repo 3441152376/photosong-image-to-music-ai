@@ -25,8 +25,8 @@ PhotoSongAI 是一个创新的 AI 驱动的图片转音乐平台，能够将图�
 
 1. 克隆项目
 ```bash
-git clone https://github.com/你的用户名/photosong-ai.git
-cd photosong-ai
+git clone https://github.com/3441152376/photosong-image-to-music.git
+cd photosong-image-to-music
 ```
 
 2. 安装依赖
@@ -101,7 +101,7 @@ src/
 
 ## 联系我们
 
-- 邮箱：你的邮箱地址
+- 邮箱：admin@egg404.cn
 
 ## 致谢
 
